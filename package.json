@@ -20,6 +20,7 @@
     "astro": "^7.3.6",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.12",
+    "motion": "^14.0.0",
     "zod": "^4.6.5"
   },
   "allowScripts": {

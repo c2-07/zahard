@@ -16,7 +16,7 @@ if (cookie) {
   <meta charset="UTF-8">
   <title>Login - Zahard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0000f2">
+  <meta name="theme-color" content="#0000cc">
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
   <div class="card w-full max-w-sm p-8 shadow-2xl">
@@ -47,6 +47,10 @@ if (cookie) {
   </div>
 
   <script>
+    import { animate } from 'motion';
+
+    animate('.card', { scale: [0.95, 1], opacity: [0, 1] }, { duration: 0.4, easing: 'ease-out' });
+
     document.getElementById('guest-login-btn')?.addEventListener('click', () => {
       document.cookie = "session=guest_admin; path=/";
       window.location.href = '/dashboard';

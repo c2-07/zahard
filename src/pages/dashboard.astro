@@ -267,6 +267,24 @@ if (user?.role === 'admin') {
 
   <script>
     import { customAlert, customConfirm } from '../lib/ui';
+    import { animate, stagger, inView } from 'motion';
+
+    // Page Load Animations
+    animate('.tab-btn', { opacity: [0, 1], x: [-20, 0] }, { delay: stagger(0.05), duration: 0.4 });
+    animate('.tab-content > *', { opacity: [0, 1], y: [20, 0] }, { delay: stagger(0.1, { startDelay: 0.2 }), duration: 0.5 });
+
+    // Interactive Hover Effects for Cards and Rows
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+      card.addEventListener('mouseenter', () => animate(card, { y: -2, boxShadow: '0 10px 25px -5px rgba(242, 242, 242, 0.1), 0 8px 10px -6px rgba(242, 242, 242, 0.1)' }, { duration: 0.2 }));
+      card.addEventListener('mouseleave', () => animate(card, { y: 0, boxShadow: 'none' }, { duration: 0.2 }));
+    });
+
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      row.addEventListener('mouseenter', () => animate(row, { backgroundColor: 'rgba(242, 242, 242, 0.05)', scale: 1.01 }, { duration: 0.2 }));
+      row.addEventListener('mouseleave', () => animate(row, { backgroundColor: 'transparent', scale: 1 }, { duration: 0.2 }));
+    });
 
     // Tab Switching Logic
     const tabBtns = document.querySelectorAll('.tab-btn');

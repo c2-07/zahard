@@ -2,7 +2,7 @@
 
 @layer base {
   :root {
-    --blue: #0000f2;
+    --blue: #0000cc;
     --paper: #f2f2f2;
     --ink: #0a0a0a;
     --muted: rgba(242, 242, 242, 0.55);
@@ -41,13 +41,57 @@
     @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--paper)] text-[var(--blue)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--paper)]/50;
+    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-[var(--paper)] bg-transparent text-[var(--paper)] z-10;
   }
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: var(--paper);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: -1;
+  }
+  .btn-primary:hover::before {
+    transform: scaleX(1);
+  }
+  .btn-primary:hover {
+    color: var(--blue);
+  }
+
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-[rgba(242,242,242,0.12)] text-[var(--paper)] hover:bg-[rgba(242,242,242,0.2)] focus-visible:ring-2 focus-visible:ring-[var(--paper)]/30;
+    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-transparent bg-[rgba(242,242,242,0.12)] text-[var(--paper)] z-10 hover:border-[rgba(242,242,242,0.3)];
   }
+  .btn-ghost::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(242,242,242,0.2);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: -1;
+  }
+  .btn-ghost:hover::before {
+    transform: scaleX(1);
+  }
+
   .btn-danger {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-transparent text-red-400 border border-red-500/30 hover:bg-red-500/10 focus-visible:ring-2 focus-visible:ring-red-400/30;
+    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-red-500/30 bg-transparent text-red-400 z-10;
+  }
+  .btn-danger::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(239, 68, 68, 0.15); /* red-500/15 */
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: -1;
+  }
+  .btn-danger:hover::before {
+    transform: scaleX(1);
   }
 
   .field {
