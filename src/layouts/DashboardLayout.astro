@@ -16,15 +16,16 @@ const { title } = Astro.props;
 ---
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <meta charset="UTF-8">
-  <title>{title} - Hermes API</title>
+  <title>{title} - Zahard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body class="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-blue-500/30 selection:text-white">
   <header class="border-b border-[var(--border)] bg-black/40 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex items-center justify-between shadow-sm">
     <div class="font-bold uppercase tracking-widest text-lg flex items-center gap-2">
       <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
-      Hermes<span class="opacity-50">API</span>
+      Zahard
     </div>
     
     <div class="flex items-center gap-4">
