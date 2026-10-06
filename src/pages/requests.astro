@@ -1,6 +1,6 @@
 ---
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { db } from '../lib/db';
+import { sql } from '../lib/db';
 import { verifySession } from '../lib/auth';
 
 const cookie = Astro.cookies.get('session');
@@ -12,8 +12,7 @@ if (!user || user.role !== 'admin') {
   return Astro.redirect('/dashboard');
 }
 
-const stmt = db.prepare("SELECT * FROM access_requests ORDER BY requested_at DESC");
-const requests = stmt.all() as any[];
+const { rows: requests } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
 ---
 <DashboardLayout title="Access Requests">
   <div class="mb-8 flex justify-between items-end">

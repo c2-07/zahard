@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../lib/db';
+import { sql } from '../../../lib/db';
 import { verifySession } from '../../../lib/auth';
 
 export const PATCH: APIRoute = async ({ params, request, cookies }) => {
@@ -15,8 +15,8 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   const { action, days } = await request.json();
 
   if (action === 'extend' && days) {
-    const userStmt = db.prepare('SELECT expires_at FROM users WHERE id = ?');
-    const user = userStmt.get(userId) as any;
+    const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${userId}`;
+    const user = rows[0];
 
     if (!user) return new Response('Not found', { status: 404 });
 
@@ -25,8 +25,7 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     const baseDate = currentExp < new Date() ? new Date() : currentExp;
     baseDate.setDate(baseDate.getDate() + parseInt(days));
 
-    const updateStmt = db.prepare('UPDATE users SET expires_at = ? WHERE id = ?');
-    updateStmt.run(baseDate.toISOString(), userId);
+    await sql`UPDATE users SET expires_at = ${baseDate.toISOString()} WHERE id = ${userId}`;
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
@@ -45,13 +44,12 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
 
   const userId = params.id;
   
-  const userStmt = db.prepare('SELECT role FROM users WHERE id = ?');
-  const user = userStmt.get(userId) as any;
+  const { rows } = await sql`SELECT role FROM users WHERE id = ${userId}`;
+  const user = rows[0];
   if (!user) return new Response('Not found', { status: 404 });
   if (user.role === 'admin') return new Response('Cannot delete admin', { status: 400 });
 
-  const delStmt = db.prepare('DELETE FROM users WHERE id = ?');
-  delStmt.run(userId);
+  await sql`DELETE FROM users WHERE id = ${userId}`;
 
   return new Response(JSON.stringify({ success: true }), { status: 200 });
 };

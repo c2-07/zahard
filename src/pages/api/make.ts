@@ -1,12 +1,12 @@
 import type { APIRoute } from 'astro';
-import { db, getSetting } from '../../lib/db';
+import { sql, getSetting } from '../../lib/db';
 import { verifySession } from '../../lib/auth';
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   // 1. Check API switch
-  const apiEnabled = getSetting('api_enabled');
+  const apiEnabled = await getSetting('api_enabled');
   if (apiEnabled !== 'true') {
     return new Response(JSON.stringify({ error: 'API is currently disabled by admin' }), { status: 503 });
   }
@@ -24,8 +24,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   // Check expiration again
   if (session.role !== 'admin') {
-    const stmt = db.prepare('SELECT expires_at FROM users WHERE id = ?');
-    const user = stmt.get(session.userId) as any;
+    const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${session.userId}`;
+    const user = rows[0];
     
     if (user?.expires_at && new Date(user.expires_at).getTime() < Date.now()) {
       return new Response(JSON.stringify({ error: 'Account expired' }), { status: 403 });

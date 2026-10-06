@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../lib/db';
+import { sql } from '../../../lib/db';
 import { verifySession } from '../../../lib/auth';
 
 export const POST: APIRoute = async ({ params, request, cookies }) => {
@@ -15,13 +15,11 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   const { action } = await request.json();
 
   if (action === 'approve') {
-    const updateReq = db.prepare("UPDATE access_requests SET status = 'approved' WHERE id = ?");
-    updateReq.run(reqId);
+    await sql`UPDATE access_requests SET status = 'approved' WHERE id = ${reqId}`;
     return new Response(JSON.stringify({ success: true }), { status: 200 });
 
   } else if (action === 'reject') {
-    const delReq = db.prepare('DELETE FROM access_requests WHERE id = ?');
-    delReq.run(reqId);
+    await sql`DELETE FROM access_requests WHERE id = ${reqId}`;
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
 

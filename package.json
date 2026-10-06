@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.84",
+    "@vercel/postgres": "^0.10.0",
     "ai": "^7.0.128",
     "astro": "^7.3.6",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
     "jose": "^6.2.12",
     "zod": "^4.6.5"
   },

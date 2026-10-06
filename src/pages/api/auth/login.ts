@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../lib/db';
+import { sql } from '../../../lib/db';
 import { verifyPassword, createSession } from '../../../lib/auth';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -10,8 +10,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: 'Missing credentials' }), { status: 400 });
     }
 
-    const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
-    const user = stmt.get(username) as any;
+    const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
+    const user = rows[0];
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
@@ -22,8 +22,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const expiresAt = new Date(user.expires_at).getTime();
       if (Date.now() > expiresAt) {
         // Delete user
-        const delStmt = db.prepare('DELETE FROM users WHERE id = ?');
-        delStmt.run(user.id);
+        await sql`DELETE FROM users WHERE id = ${user.id}`;
         return new Response(JSON.stringify({ error: 'Account expired' }), { status: 401 });
       }
     }

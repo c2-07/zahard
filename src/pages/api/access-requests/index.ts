@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../lib/db';
+import { sql } from '../../../lib/db';
 import { verifySession } from '../../../lib/auth';
 import { randomUUID } from 'node:crypto';
 
@@ -11,15 +11,15 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Check if user already exists in users table
-    const userStmt = db.prepare('SELECT * FROM users WHERE username = ?');
-    const existingUser = userStmt.get(username) as any;
+    const { rows: userRows } = await sql`SELECT * FROM users WHERE username = ${username}`;
+    const existingUser = userRows[0];
 
     if (existingUser) {
       if (existingUser.role !== 'admin' && existingUser.expires_at) {
         const expiresAt = new Date(existingUser.expires_at).getTime();
         if (Date.now() > expiresAt) {
           // User is expired. Delete them so they can re-request.
-          db.prepare('DELETE FROM users WHERE id = ?').run(existingUser.id);
+          await sql`DELETE FROM users WHERE id = ${existingUser.id}`;
         } else {
           return new Response(JSON.stringify({ state: 'active', message: 'You already have an active account. Please login.' }), { status: 200 });
         }
@@ -29,8 +29,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Check access_requests table
-    const reqStmt = db.prepare('SELECT * FROM access_requests WHERE username = ?');
-    const existingReq = reqStmt.get(username) as any;
+    const { rows: existReqRows } = await sql`SELECT * FROM access_requests WHERE username = ${username}`;
+    const existingReq = existReqRows[0];
 
     if (existingReq) {
       if (existingReq.status === 'approved') {
@@ -41,8 +41,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Insert new request
-    const stmt = db.prepare('INSERT INTO access_requests (id, username, status) VALUES (?, ?, ?)');
-    stmt.run(randomUUID(), username, 'pending');
+    await sql`INSERT INTO access_requests (id, username, status) VALUES (${randomUUID()}, ${username}, 'pending')`;
 
     return new Response(JSON.stringify({ state: 'created', message: 'Request submitted successfully. Waiting for admin approval.' }), { status: 201 });
   } catch (err: any) {
@@ -59,8 +58,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     return new Response('Forbidden', { status: 403 });
   }
 
-  const stmt = db.prepare('SELECT * FROM access_requests ORDER BY requested_at DESC');
-  const requests = stmt.all();
+  const { rows: requests } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
 
   return new Response(JSON.stringify(requests), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };

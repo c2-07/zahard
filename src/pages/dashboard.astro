@@ -1,6 +1,6 @@
 ---
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { db, getSetting } from '../lib/db';
+import { sql, getSetting } from '../lib/db';
 import { verifySession } from '../lib/auth';
 
 const cookie = Astro.cookies.get('session');
@@ -17,11 +17,11 @@ let defaultExp = 1;
 let userExpiresAt = null;
 
 if (user?.role === 'admin') {
-  apiEnabled = getSetting('api_enabled') === 'true';
-  defaultExp = parseInt(getSetting('default_expiration_days') || '1');
+  apiEnabled = await getSetting('api_enabled') === 'true';
+  defaultExp = parseInt(await getSetting('default_expiration_days') || '1');
 } else {
-  const stmt = db.prepare('SELECT expires_at FROM users WHERE id = ?');
-  const dbUser = stmt.get(user?.userId) as any;
+  const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${user?.userId}`;
+  const dbUser = rows[0] as any;
   userExpiresAt = dbUser?.expires_at;
 }
 ---
