@@ -12,9 +12,10 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   }
 
   const userId = params.id;
-  const { action, days } = await request.json();
+  const body = await request.json();
+  const { action } = body;
 
-  if (action === 'extend' && days) {
+  if (action === 'extend') {
     const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${userId}`;
     const user = rows[0];
 
@@ -23,9 +24,17 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     const currentExp = user.expires_at ? new Date(user.expires_at) : new Date();
     // if already expired, start from now
     const baseDate = currentExp < new Date() ? new Date() : currentExp;
-    baseDate.setDate(baseDate.getDate() + parseInt(days));
+    
+    const { hours, days, months, date } = body;
 
-    await sql`UPDATE users SET expires_at = ${baseDate.toISOString()} WHERE id = ${userId}`;
+    if (date) {
+      await sql`UPDATE users SET expires_at = ${new Date(date).toISOString()} WHERE id = ${userId}`;
+    } else {
+      if (hours) baseDate.setHours(baseDate.getHours() + parseInt(hours));
+      if (days) baseDate.setDate(baseDate.getDate() + parseInt(days));
+      if (months) baseDate.setMonth(baseDate.getMonth() + parseInt(months));
+      await sql`UPDATE users SET expires_at = ${baseDate.toISOString()} WHERE id = ${userId}`;
+    }
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }

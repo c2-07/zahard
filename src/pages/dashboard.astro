@@ -100,11 +100,13 @@ if (user?.role === 'admin') {
           <h2 class="text-xl font-bold uppercase tracking-wider mb-4">CLI Installation</h2>
           <p class="mb-4 text-sm opacity-80">Run this command in your terminal to install the `za` CLI locally:</p>
           
-          <div class="border border-[var(--border)] bg-[#000000] mb-6 relative overflow-hidden group rounded-sm">
+          <div class="border border-[var(--border)] bg-[#000000] mb-6 relative group rounded-sm flex items-center">
             <!-- Window Body -->
-            <div class="p-3 sm:p-4 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre flex justify-between items-center gap-4">
+            <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
               <code><span class="text-[#27C93F]">curl</span> <span class="opacity-60">-fsSL</span> <span class="text-[#FFBD2E]">{installUrl}</span> <span class="opacity-60">|</span> <span class="text-[#27C93F]">bash</span></code>
-              <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" id="copy-btn" data-url={installUrl}>
+            </div>
+            <div class="absolute right-2">
+              <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100" id="copy-btn" data-url={installUrl}>
                 Copy
               </button>
             </div>
@@ -155,7 +157,7 @@ if (user?.role === 'admin') {
                       <td class="p-4 text-right space-x-2 whitespace-nowrap">
                         {u.role !== 'admin' && (
                           <>
-                            <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>+1 Day</button>
+                            <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>Extend...</button>
                             <button class="btn-danger !text-xs delete-btn" data-id={u.id}>Revoke</button>
                           </>
                         )}
@@ -257,7 +259,7 @@ if (user?.role === 'admin') {
   </style>
 
   <script>
-    import { customAlert, customConfirm } from '../lib/ui';
+    import { customAlert, customConfirm, promptExpiration } from '../lib/ui';
     import { animate, stagger, inView } from 'motion';
 
     // Page Load Animations
@@ -348,10 +350,16 @@ if (user?.role === 'admin') {
     document.querySelectorAll('.extend-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+        const result = await promptExpiration();
+        if (!result) return;
+
+        const payload: any = { action: 'extend' };
+        payload[result.type] = result.value;
+
         const res = await fetch(`/api/users/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'extend', days: 1 })
+          body: JSON.stringify(payload)
         });
         if (res.ok) window.location.reload();
       });
