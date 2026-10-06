@@ -11,16 +11,16 @@ set -e
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-cat > "$INSTALL_DIR/ass" <<'EOF'
+cat > "$INSTALL_DIR/za" <<'EOF'
 #!/bin/sh
 set -e
 
 API_URL="${apiUrl}"
-COOKIE_FILE="$HOME/.config/ass/cookie"
+COOKIE_FILE="$HOME/.config/za/cookie"
 INSTALL_DIR="$HOME/.local/bin"
 
 _usage() {
-    echo "Usage: ass [OPTIONS] <PROMPT>"
+    echo "Usage: za [OPTIONS] <PROMPT>"
     echo ""
     echo "Commands:"
     echo "  login        Log in to your account"
@@ -31,14 +31,14 @@ _usage() {
     echo "  -t           Prioritize the Gemini reasoning model"
     echo ""
     echo "Examples:"
-    echo "  ass login"
-    echo "  ass \\"write a python script to parse logs\\""
-    echo "  ass -t \\"explain quantum physics\\""
+    echo "  za login"
+    echo "  za \\"write a python script to parse logs\\""
+    echo "  za -t \\"explain quantum physics\\""
 }
 
 _uninstall() {
-    echo "Uninstalling 'ass' CLI..."
-    rm -f "$INSTALL_DIR/ass"
+    echo "Uninstalling 'za' CLI..."
+    rm -f "$INSTALL_DIR/za"
     rm -rf "$(dirname "$COOKIE_FILE")"
     echo "Uninstalled successfully."
     echo "Note: You may want to manually remove $INSTALL_DIR from your PATH if you don't use it for other tools."
@@ -48,15 +48,15 @@ _uninstall() {
 _login() {
     printf "Username: "
     read -r username
-    printf "Password: "
+    printf "Pzaword: "
     stty -echo 2>/dev/null || true
-    read -r password
+    read -r pzaword
     stty echo 2>/dev/null || true
     printf "\\n"
 
     mkdir -p "$(dirname "$COOKIE_FILE")"
 
-    if ! curl_output=$(curl -fsSL -c "$COOKIE_FILE" -H 'Content-Type: application/json' --data "{\\"username\\":\\"$username\\",\\"password\\":\\"$password\\"}" "$API_URL/auth/login" 2>&1); then
+    if ! curl_output=$(curl -fsSL -c "$COOKIE_FILE" -H 'Content-Type: application/json' --data "{\\"username\\":\\"$username\\",\\"pzaword\\":\\"$pzaword\\"}" "$API_URL/auth/login" 2>&1); then
         echo "Login failed. Network error or incorrect credentials." >&2
         rm -f "$COOKIE_FILE"
         exit 1
@@ -86,7 +86,7 @@ fi
 
 if [ ! -f "$COOKIE_FILE" ]; then
     echo "Error: Not logged in." >&2
-    echo "Please run: ass login" >&2
+    echo "Please run: za login" >&2
     exit 1
 fi
 
@@ -134,7 +134,7 @@ fi
 echo "$BODY" | jq -r '.text // .error'
 EOF
 
-chmod +x "$INSTALL_DIR/ass"
+chmod +x "$INSTALL_DIR/za"
 
 # --- PATH Configuration ---
 add_to_path() {
@@ -171,7 +171,7 @@ esac
 export PATH="$INSTALL_DIR:$PATH"
 
 echo "----------------------------------------"
-echo "Successfully installed 'ass' CLI!"
+echo "Successfully installed 'za' CLI!"
 echo "----------------------------------------"
 if [ "$SHELL_NAME" = "fish" ]; then
     echo "Please run 'source ~/.config/fish/config.fish' or restart your terminal."
@@ -180,9 +180,9 @@ else
 fi
 echo ""
 echo "Getting started:"
-echo "  1. Login: ass login"
-echo "  2. Ask:   ass \\"Hello world!\\""
-echo "  3. Help:  ass help"
+echo "  1. Login: za login"
+echo "  2. Ask:   za \\"Hello world!\\""
+echo "  3. Help:  za help"
 `;
 
   return new Response(script, {

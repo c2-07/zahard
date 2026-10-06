@@ -98,18 +98,23 @@ if (user?.role === 'admin') {
         <!-- Install Instructions -->
         <div class="card p-6 mb-8">
           <h2 class="text-xl font-bold uppercase tracking-wider mb-4">CLI Installation</h2>
-          <p class="mb-4 text-sm opacity-80">Run this command in your terminal to install the `ass` CLI locally:</p>
+          <p class="mb-4 text-sm opacity-80">Run this command in your terminal to install the `za` CLI locally:</p>
           
-          <div class="bg-[rgba(242,242,242,0.07)] p-4 border border-[var(--border)] mb-4">
-            <code class="font-mono text-sm break-all select-all text-[var(--paper)]">curl -fsSL {installUrl} | bash</code>
+          <div class="bg-[rgba(242,242,242,0.07)] p-4 border border-[var(--border)] mb-4 flex items-center justify-between gap-4">
+            <code class="font-mono text-sm break-all text-[var(--paper)]">
+              <span class="text-green-400">curl</span> <span class="opacity-60">-fsSL</span> <span class="text-blue-300">{installUrl}</span> <span class="opacity-60">|</span> <span class="text-green-400">bash</span>
+            </code>
+            <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] shrink-0" id="copy-btn" data-url={installUrl}>
+              Copy
+            </button>
           </div>
           
           <div class="text-sm opacity-80">
             <div class="font-bold uppercase tracking-widest text-xs mb-2 opacity-60">Next Steps:</div>
             <ol class="list-decimal list-inside space-y-2">
-              <li>Run <code class="font-mono">ass login</code> and enter your credentials.</li>
-              <li>Ask a question: <code class="font-mono">ass "Hello world!"</code></li>
-              <li>Use reasoning: <code class="font-mono">ass -t "Explain quantum physics"</code></li>
+              <li>Run <code class="font-mono">za login</code> and enter your credentials.</li>
+              <li>Ask a question: <code class="font-mono">za "Hello world!"</code></li>
+              <li>Use reasoning: <code class="font-mono">za -t "Explain quantum physics"</code></li>
             </ol>
           </div>
         </div>
@@ -286,6 +291,23 @@ if (user?.role === 'admin') {
         }
       });
     });
+
+    // Copy Button Logic
+    const copyBtn = document.getElementById('copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const url = copyBtn.getAttribute('data-url');
+        const text = `curl -fsSL ${url} | bash`;
+        try {
+          await navigator.clipboard.writeText(text);
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+        } catch (err) {
+          console.error('Failed to copy', err);
+        }
+      });
+    }
 
     // Admin Actions
     const settingsForm = document.getElementById('settings-form');
