@@ -1,9 +1,13 @@
 import type { APIRoute } from 'astro';
-import { sql } from '../../../lib/db';
+import { sql, initSchema, seedAdmin } from '../../../lib/db';
 import { verifyPassword, createSession } from '../../../lib/auth';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Ensure tables exist on Vercel Serverless since background tasks often get killed
+    await initSchema();
+    await seedAdmin();
+
     const { username, password } = await request.json();
 
     if (!username || !password) {
@@ -43,7 +47,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     return new Response(JSON.stringify({ success: true, role: user.role }), { status: 200 });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });
+  } catch (err: any) {
+    console.error('Login error:', err);
+    return new Response(JSON.stringify({ error: 'Server error', details: err.message }), { status: 500 });
   }
 };

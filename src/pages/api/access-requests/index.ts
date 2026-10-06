@@ -1,10 +1,13 @@
 import type { APIRoute } from 'astro';
-import { sql } from '../../../lib/db';
+import { sql, initSchema, seedAdmin } from '../../../lib/db';
 import { verifySession } from '../../../lib/auth';
 import { randomUUID } from 'node:crypto';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    await initSchema();
+    await seedAdmin();
+    
     const { username } = await request.json();
     if (!username) {
       return new Response(JSON.stringify({ error: 'Username/Email is required' }), { status: 400 });
