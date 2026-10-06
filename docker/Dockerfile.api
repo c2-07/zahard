@@ -1,0 +1,7 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY api/ .
+RUN pip install uv && uv sync --no-dev
+EXPOSE 8080
+ENV DB_PATH=/data/app.db
+CMD ["uv", "run", "python", "main.py"]

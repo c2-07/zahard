@@ -1,0 +1,120 @@
+---
+import '../styles/global.css';
+---
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Request Access - Hermes API</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="card w-full max-w-sm p-8 shadow-2xl">
+    <h1 class="text-2xl font-bold mb-6 text-center uppercase tracking-widest text-[1.2rem]">Request Access</h1>
+    
+    <div id="status-msg" class="hidden text-sm mb-4 border p-3"></div>
+    <div id="error-msg" class="hidden text-red-500 text-sm mb-4 border border-red-500/30 bg-red-500/10 p-3"></div>
+
+    <!-- Step 1: Check/Create Request -->
+    <form id="request-form" class="space-y-4">
+      <div>
+        <label for="username" class="block text-sm mb-1 uppercase tracking-wider">Email / Username</label>
+        <input type="text" id="username" name="username" class="field" autocomplete="username" required />
+      </div>
+      <button type="submit" class="btn-primary w-full justify-center mt-6">Check / Submit Request</button>
+    </form>
+
+    <!-- Step 2: Set Password (hidden initially) -->
+    <form id="password-form" class="space-y-4 hidden mt-4">
+      <div>
+        <label for="password" class="block text-sm mb-1 uppercase tracking-wider">Set a Password</label>
+        <input type="password" id="password" name="password" class="field" autocomplete="new-password" required />
+      </div>
+      <button type="submit" class="btn-primary w-full justify-center mt-6">Create Account</button>
+    </form>
+    
+    <div class="mt-6 text-center text-sm">
+      <a href="/login" class="hover:underline opacity-80 uppercase tracking-widest">Back to Login</a>
+    </div>
+  </div>
+
+  <script>
+    const requestForm = document.getElementById('request-form');
+    const passwordForm = document.getElementById('password-form');
+    const statusMsg = document.getElementById('status-msg');
+    const errorMsg = document.getElementById('error-msg');
+    let currentUsername = '';
+
+    function showStatus(msg: string, type: 'info' | 'success' | 'warning') {
+      statusMsg!.className = 'text-sm mb-4 border p-3 ' + 
+        (type === 'success' ? 'text-green-400 border-green-500/30 bg-green-500/10' : 
+         type === 'warning' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 
+         'text-blue-400 border-blue-500/30 bg-blue-500/10');
+      statusMsg!.textContent = msg;
+      statusMsg!.classList.remove('hidden');
+    }
+
+    requestForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      currentUsername = (document.getElementById('username') as HTMLInputElement).value;
+      
+      errorMsg?.classList.add('hidden');
+      statusMsg?.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/access-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUsername })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          if (data.state === 'approved') {
+            showStatus(data.message, 'success');
+            requestForm.classList.add('hidden');
+            passwordForm?.classList.remove('hidden');
+          } else if (data.state === 'pending' || data.state === 'created') {
+            showStatus(data.message, 'info');
+          } else if (data.state === 'active') {
+            showStatus(data.message, 'success');
+            requestForm.classList.add('hidden');
+          }
+        } else {
+          errorMsg!.textContent = data.error || 'Failed to process request';
+          errorMsg?.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorMsg!.textContent = 'Network error';
+        errorMsg?.classList.remove('hidden');
+      }
+    });
+
+    passwordForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = (document.getElementById('password') as HTMLInputElement).value;
+      
+      errorMsg?.classList.add('hidden');
+      
+      try {
+        const res = await fetch('/api/access-requests/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUsername, password })
+        });
+        
+        if (res.ok) {
+          window.location.href = '/login';
+        } else {
+          const data = await res.json();
+          errorMsg!.textContent = data.error || 'Failed to set password';
+          errorMsg?.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorMsg!.textContent = 'Network error';
+        errorMsg?.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+FROM node:22-alpine
+WORKDIR /app
+COPY astro/package*.json ./
+RUN npm ci
+COPY astro/ .
+RUN npm run build
+# The build output is configured in astro.config.mjs to go to /static (which is ../static relative to /app/astro)
+# Wait, if workdir is /app, and astro code is in /app, outDir: '../static' puts it in /static
+CMD ["echo", "Astro build complete. Output is in /static"]

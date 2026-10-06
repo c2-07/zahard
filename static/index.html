@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>classroom-help</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0a0f;
+      --surface: #111118;
+      --border:  #1e1e2e;
+      --muted:   #3a3a52;
+      --text:    #e2e2f0;
+      --sub:     #7070a0;
+      --accent:  #7c6fe0;
+      --accent2: #a78bfa;
+      --danger:  #e05c6f;
+      --green:   #4ade80;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Login ──────────────────────────────────────────────── */
+    #login-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 24px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--sub); font-weight: 400; }
+
+    .tagline {
+      font-size: 0.8rem;
+      color: var(--sub);
+      margin-bottom: 32px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--sub);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.92rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 18px;
+    }
+    input:focus { border-color: var(--accent); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      justify-content: center;
+      padding: 12px;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--sub);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 0.8rem;
+    }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+      padding: 6px 12px;
+      font-size: 0.78rem;
+    }
+    .btn-danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+
+    .error-msg {
+      background: color-mix(in srgb, var(--danger) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+      color: var(--danger);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* ── Dashboard ──────────────────────────────────────────── */
+    #dashboard-view {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent2);
+      letter-spacing: -0.3px;
+    }
+    .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-user { font-size: 0.8rem; color: var(--sub); }
+    .nav-role {
+      font-size: 0.7rem;
+      background: color-mix(in srgb, var(--accent) 20%, transparent);
+      color: var(--accent2);
+      border-radius: 100px;
+      padding: 2px 10px;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      padding: 36px 32px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--sub);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    /* ── Status Card ─────────────────────────────────────────── */
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .status-info h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .status-info p {
+      font-size: 0.82rem;
+      color: var(--sub);
+    }
+
+    .status-badge {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 100px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 16px;
+    }
+    .status-badge.on {
+      background: color-mix(in srgb, var(--green) 15%, transparent);
+      color: var(--green);
+      border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+    }
+    .status-badge.off {
+      background: color-mix(in srgb, var(--danger) 15%, transparent);
+      color: var(--danger);
+      border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    }
+
+    .toggle-row { display: flex; align-items: center; gap: 16px; }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--muted);
+      border-radius: 100px;
+      transition: background 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-track { background: var(--accent); }
+    .toggle-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      transition: left 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-thumb { left: 28px; }
+
+    /* ── Users table ─────────────────────────────────────────── */
+    .users-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .users-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .users-header h3 { font-size: 0.92rem; font-weight: 600; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--sub);
+      font-weight: 600;
+      text-align: left;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+    tbody td { padding: 14px 24px; font-size: 0.88rem; }
+
+    .role-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 100px;
+    }
+    .role-admin {
+      background: color-mix(in srgb, var(--accent2) 20%, transparent);
+      color: var(--accent2);
+    }
+    .role-user {
+      background: color-mix(in srgb, var(--sub) 20%, transparent);
+      color: var(--sub);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--sub);
+      font-size: 0.85rem;
+    }
+
+    /* ── Add User Modal ───────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      display: none;
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .modal h3 { font-size: 1rem; margin-bottom: 24px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.ok  { background: color-mix(in srgb, var(--green)  20%, var(--surface)); color: var(--green);  border: 1px solid color-mix(in srgb, var(--green) 40%, transparent); }
+    #toast.err { background: color-mix(in srgb, var(--danger) 20%, var(--surface)); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login view ─────────────────────────────────────────────────────────── -->
+<div id="login-view">
+  <div class="login-card">
+    <div class="logo">classroom<span>/</span>help</div>
+    <div class="tagline">Sign in to manage your instance</div>
+    <div id="login-error" class="error-msg"></div>
+    <label for="u">Username</label>
+    <input id="u" type="text" placeholder="admin" autocomplete="username" />
+    <label for="p">Password</label>
+    <input id="p" type="password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- ── Dashboard view ─────────────────────────────────────────────────────── -->
+<div id="dashboard-view">
+  <nav>
+    <div class="nav-brand">classroom/help</div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username"></span>
+      <span class="nav-role" id="nav-role"></span>
+      <button class="btn btn-ghost" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Status card -->
+    <div class="section-title">API Status</div>
+    <div class="status-card">
+      <div class="status-info">
+        <h2>Request handling</h2>
+        <p id="status-desc">Loading…</p>
+      </div>
+      <div class="toggle-row">
+        <span id="status-badge" class="status-badge"></span>
+        <label class="toggle-switch" id="toggle-wrap" style="display:none">
+          <input type="checkbox" id="api-toggle" onchange="toggleApi()" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Users table (admin only) -->
+    <div id="users-section" style="display:none">
+      <div class="section-title">Users</div>
+      <div class="users-card">
+        <div class="users-header">
+          <h3>All accounts</h3>
+          <button class="btn btn-ghost" onclick="openAddUser()">+ Add user</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="3" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Add user modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal">
+    <h3>Add user</h3>
+    <div id="modal-error" class="error-msg"></div>
+    <label>Username</label>
+    <input id="new-user" type="text" placeholder="username" autocomplete="off" />
+    <label>Password</label>
+    <input id="new-pass" type="password" placeholder="••••••••" autocomplete="new-password" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddUser()">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;padding:10px 22px" onclick="doAddUser()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+  let TOKEN = localStorage.getItem("token");
+  let ROLE  = localStorage.getItem("role");
+
+  if (TOKEN) showDashboard();
+
+  // ── Auth ────────────────────────────────────────────────────────────────
+
+  async function doLogin() {
+    const username = document.getElementById("u").value.trim();
+    const password = document.getElementById("p").value;
+    const err      = document.getElementById("login-error");
+    const btn      = document.getElementById("login-btn");
+
+    if (!username || !password) { showErr(err, "Please enter username and password"); return; }
+
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+    err.style.display = "none";
+
+    try {
+      const res = await fetch("/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) { const d = await res.json(); showErr(err, d.detail || "Login failed"); return; }
+      const data = await res.json();
+      TOKEN = data.token;
+      ROLE  = data.role;
+      localStorage.setItem("token", TOKEN);
+      localStorage.setItem("role", ROLE);
+      showDashboard();
+    } catch (e) {
+      showErr(err, "Network error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Sign in";
+    }
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.getElementById("login-view").style.display !== "none") doLogin();
+  });
+
+  function doLogout() {
+    TOKEN = null; ROLE = null;
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    document.getElementById("dashboard-view").style.display = "none";
+    document.getElementById("login-view").style.display     = "flex";
+  }
+
+  // ── Dashboard ───────────────────────────────────────────────────────────
+
+  function showDashboard() {
+    document.getElementById("login-view").style.display     = "none";
+    document.getElementById("dashboard-view").style.display = "flex";
+
+    const stored = localStorage.getItem("token_username") || "";
+    document.getElementById("nav-username").textContent = stored;
+    document.getElementById("nav-role").textContent     = ROLE || "";
+
+    loadStatus();
+    if (ROLE === "admin") {
+      document.getElementById("users-section").style.display = "block";
+      document.getElementById("toggle-wrap").style.display   = "flex";
+      loadUsers();
+    }
+  }
+
+  // Decode username from JWT (base64 middle part)
+  (function extractUsername() {
+    if (!TOKEN) return;
+    try {
+      const payload = JSON.parse(atob(TOKEN.split(".")[1]));
+      localStorage.setItem("token_username", payload.sub || "");
+      document.getElementById("nav-username").textContent = payload.sub || "";
+    } catch {}
+  })();
+
+  // ── Status ──────────────────────────────────────────────────────────────
+
+  async function loadStatus() {
+    try {
+      const res = await api("GET", "/status");
+      if (!res.ok) return;
+      const { api_enabled } = await res.json();
+      renderStatus(api_enabled);
+    } catch {}
+  }
+
+  function renderStatus(enabled) {
+    const badge = document.getElementById("status-badge");
+    const desc  = document.getElementById("status-desc");
+    const tog   = document.getElementById("api-toggle");
+
+    badge.className = "status-badge " + (enabled ? "on" : "off");
+    badge.innerHTML = `<span class="dot"></span>${enabled ? "Online" : "Offline"}`;
+    desc.textContent = enabled
+      ? "The API is accepting requests from authorized users."
+      : "The API is paused. All /make requests will return 503.";
+    tog.checked = enabled;
+  }
+
+  async function toggleApi() {
+    const enabled = document.getElementById("api-toggle").checked;
+    try {
+      const res = await api("POST", "/status", { api_enabled: enabled });
+      if (!res.ok) { toast("Failed to update status", true); loadStatus(); return; }
+      renderStatus(enabled);
+      toast(enabled ? "API enabled" : "API disabled");
+    } catch { toast("Network error", true); }
+  }
+
+  // ── Users ────────────────────────────────────────────────────────────────
+
+  async function loadUsers() {
+    try {
+      const res = await api("GET", "/users");
+      if (!res.ok) return;
+      const users = await res.json();
+      renderUsers(users);
+    } catch {}
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById("users-tbody");
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No users yet.</td></tr>`;
+      return;
+    }
+    const me = (localStorage.getItem("token_username") || "").toLowerCase();
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${esc(u.username)}</td>
+        <td><span class="role-pill role-${u.role}">${u.role}</span></td>
+        <td>
+          ${u.role !== "admin"
+            ? `<button class="btn btn-danger" onclick="doRemoveUser('${esc(u.username)}')">Remove</button>`
+            : `<span style="color:var(--muted);font-size:0.78rem">protected</span>`
+          }
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  function openAddUser() {
+    document.getElementById("add-modal").style.display = "flex";
+    document.getElementById("modal-error").style.display = "none";
+    document.getElementById("new-user").value = "";
+    document.getElementById("new-pass").value = "";
+    document.getElementById("new-user").focus();
+  }
+  function closeAddUser() {
+    document.getElementById("add-modal").style.display = "none";
+  }
+
+  async function doAddUser() {
+    const username = document.getElementById("new-user").value.trim();
+    const password = document.getElementById("new-pass").value;
+    const err = document.getElementById("modal-error");
+    if (!username || !password) { showErr(err, "Both fields are required"); return; }
+    try {
+      const res = await api("POST", "/users", { username, password });
+      if (!res.ok) { const d = await res.json(); showErr(err, d.detail || "Failed"); return; }
+      closeAddUser();
+      toast("User created");
+      loadUsers();
+    } catch { showErr(err, "Network error"); }
+  }
+
+  async function doRemoveUser(username) {
+    if (!confirm(`Remove user "${username}"?`)) return;
+    try {
+      const res = await api("DELETE", `/users/${encodeURIComponent(username)}`);
+      if (!res.ok) { const d = await res.json(); toast(d.detail || "Failed", true); return; }
+      toast("User removed");
+      loadUsers();
+    } catch { toast("Network error", true); }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function api(method, path, body) {
+    return fetch(path, {
+      method,
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  }
+
+  function showErr(el, msg) { el.textContent = msg; el.style.display = "block"; }
+  function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  let toastTimer;
+  function toast(msg, isErr = false) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = "show " + (isErr ? "err" : "ok");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ""; }, 3000);
+  }
+</script>
+</body>
+</html>

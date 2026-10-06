@@ -1,0 +1,89 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { db, getSetting } from '../lib/db';
+import { verifySession } from '../lib/auth';
+
+const cookie = Astro.cookies.get('session');
+if (!cookie) {
+  return Astro.redirect('/login');
+}
+const user = await verifySession(cookie.value);
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+let apiEnabled = false;
+let defaultExp = 1;
+let userExpiresAt = null;
+
+if (user?.role === 'admin') {
+  apiEnabled = getSetting('api_enabled') === 'true';
+  defaultExp = parseInt(getSetting('default_expiration_days') || '1');
+} else {
+  const stmt = db.prepare('SELECT expires_at FROM users WHERE id = ?');
+  const dbUser = stmt.get(user?.userId) as any;
+  userExpiresAt = dbUser?.expires_at;
+}
+---
+<DashboardLayout title="Dashboard">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold uppercase tracking-widest mb-2">Dashboard</h1>
+    <div class="text-sm opacity-60">Manage your account and settings.</div>
+  </div>
+
+  {user?.role === 'admin' ? (
+    <div class="grid gap-6 md:grid-cols-2">
+      <div class="card p-6">
+        <h2 class="text-xl font-bold uppercase tracking-wider mb-6">API Configuration</h2>
+        
+        <form id="settings-form" class="space-y-6">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-4">
+            <div>
+              <div class="font-bold uppercase tracking-widest mb-1">API Status</div>
+              <div class="text-xs opacity-60">Allow users to query the AI model</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="api-enabled" class="sr-only peer" checked={apiEnabled}>
+              <div class="w-11 h-6 bg-[rgba(242,242,242,0.2)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
+
+          <div>
+            <label for="default-exp" class="block text-sm mb-2 uppercase tracking-wider">Default Expiration (Days)</label>
+            <input type="number" id="default-exp" name="default-exp" class="field w-32" value={defaultExp} min="1" max="365" />
+          </div>
+
+          <button type="submit" class="btn-primary">Save Settings</button>
+        </form>
+      </div>
+    </div>
+  ) : (
+    <div class="card p-6">
+      <h2 class="text-xl font-bold uppercase tracking-wider mb-4">Welcome</h2>
+      <p class="mb-4 text-sm opacity-80">Your API access is active.</p>
+      {userExpiresAt && (
+        <div class="text-sm p-4 bg-[rgba(242,242,242,0.05)] border border-[var(--border)]">
+          <span class="opacity-60 uppercase tracking-widest text-xs block mb-1">Access Expires At:</span>
+          <span class="font-mono">{new Date(userExpiresAt).toLocaleString()}</span>
+        </div>
+      )}
+    </div>
+  )}
+
+  {user?.role === 'admin' && (
+    <script>
+      document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const apiEnabled = (document.getElementById('api-enabled') as HTMLInputElement).checked;
+        const defaultExp = (document.getElementById('default-exp') as HTMLInputElement).value;
+        
+        await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_enabled: apiEnabled.toString(), default_expiration_days: defaultExp })
+        });
+        alert('Settings saved');
+      });
+    </script>
+  )}
+</DashboardLayout>

@@ -1,0 +1,90 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { db } from '../lib/db';
+import { verifySession } from '../lib/auth';
+
+const cookie = Astro.cookies.get('session');
+if (!cookie) {
+  return Astro.redirect('/login');
+}
+const currentUser = await verifySession(cookie.value);
+if (!currentUser || currentUser.role !== 'admin') {
+  return Astro.redirect('/dashboard');
+}
+
+const stmt = db.prepare("SELECT * FROM users ORDER BY created_at DESC");
+const users = stmt.all() as any[];
+---
+<DashboardLayout title="Users">
+  <div class="mb-8 flex justify-between items-end">
+    <div>
+      <h1 class="text-3xl font-bold uppercase tracking-widest mb-2">Users</h1>
+      <div class="text-sm opacity-60">Manage API access and expirations.</div>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
+          <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
+          <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Role</th>
+          <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Expires At</th>
+          <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.map(u => (
+          <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
+            <td class="p-4 text-sm font-mono">{u.username}</td>
+            <td class="p-4 text-sm">
+              <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--blue)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
+                {u.role}
+              </span>
+            </td>
+            <td class="p-4 text-sm font-mono opacity-80">
+              {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
+            </td>
+            <td class="p-4 text-right space-x-2">
+              {u.role !== 'admin' && (
+                <>
+                  <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>+1 Day</button>
+                  <button class="btn-danger !text-xs delete-btn" data-id={u.id}>Revoke</button>
+                </>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    document.querySelectorAll('.extend-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+        const res = await fetch(`/api/users/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'extend', days: 1 })
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      });
+    });
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        if (!confirm('Are you sure you want to revoke access for this user?')) return;
+        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+        const res = await fetch(`/api/users/${id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      });
+    });
+  </script>
+</DashboardLayout>

@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --blue: #0000f2;
+    --paper: #f2f2f2;
+    --ink: #0a0a0a;
+    --muted: rgba(242, 242, 242, 0.55);
+    --border: rgba(242, 242, 242, 0.15);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--blue);
+  }
+
+  body {
+    margin: 0;
+    background: var(--blue);
+    color: var(--paper);
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: var(--paper);
+    color: var(--blue);
+  }
+}
+
+@layer components {
+  .label {
+    @apply text-[10px] font-semibold tracking-[0.18em] uppercase opacity-60;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--paper)] text-[var(--blue)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--paper)]/50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-[rgba(242,242,242,0.12)] text-[var(--paper)] hover:bg-[rgba(242,242,242,0.2)] focus-visible:ring-2 focus-visible:ring-[var(--paper)]/30;
+  }
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-all duration-100 border-0 outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed bg-transparent text-red-400 border border-red-500/30 hover:bg-red-500/10 focus-visible:ring-2 focus-visible:ring-red-400/30;
+  }
+
+  .field {
+    @apply w-full bg-[rgba(242,242,242,0.07)] border border-[var(--border)] text-[var(--paper)] text-sm px-3.5 py-2.5 outline-none placeholder:opacity-40 focus:border-[rgba(242,242,242,0.5)] transition-colors;
+  }
+
+  .card {
+    @apply border border-[var(--border)] bg-[rgba(0,0,242,0.4)] backdrop-blur-sm;
+  }
+
+  .divider {
+    @apply border-t border-[var(--border)];
+  }
+}

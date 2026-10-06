@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+import { verifySession } from '../lib/auth';
+
+const cookie = Astro.cookies.get('session');
+let user = null;
+if (cookie) {
+  user = await verifySession(cookie.value);
+}
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const { title } = Astro.props;
+---
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{title} - Hermes API</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="min-h-screen flex flex-col">
+  <header class="border-b border-[var(--border)] bg-[rgba(0,0,242,0.8)] backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
+    <div class="font-bold uppercase tracking-widest text-lg">Hermes<span class="opacity-50">API</span></div>
+    
+    <nav class="hidden md:flex gap-6 text-sm uppercase tracking-wider">
+      {user.role === 'admin' && (
+        <>
+          <a href="/dashboard" class="hover:text-white transition-colors opacity-80 hover:opacity-100">Settings</a>
+          <a href="/users" class="hover:text-white transition-colors opacity-80 hover:opacity-100">Users</a>
+          <a href="/requests" class="hover:text-white transition-colors opacity-80 hover:opacity-100">Requests</a>
+        </>
+      )}
+      {user.role === 'user' && (
+        <a href="/dashboard" class="hover:text-white transition-colors opacity-80 hover:opacity-100">Dashboard</a>
+      )}
+    </nav>
+
+    <div class="flex items-center gap-4">
+      <div class="text-xs opacity-60 uppercase tracking-widest">
+        {user.role}
+      </div>
+      <button id="logout-btn" class="btn-ghost !px-3 !py-1.5 text-xs">Logout</button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6 max-w-5xl w-full mx-auto">
+    <slot />
+  </main>
+
+  <script>
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    });
+  </script>
+</body>
+</html>
