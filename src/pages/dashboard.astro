@@ -68,7 +68,7 @@ if (user?.role === 'admin') {
           <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="requests">
             Requests
             {pendingCount > 0 && (
-              <span class="bg-[var(--paper)] text-[var(--blue)] px-1.5 py-0.5 ml-2 font-mono">{pendingCount}</span>
+              <span class="bg-[var(--paper)] text-[var(--black)] px-1.5 py-0.5 ml-2 font-mono">{pendingCount}</span>
             )}
           </button>
           <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="settings">
@@ -103,7 +103,7 @@ if (user?.role === 'admin') {
           <div class="border border-[var(--border)] bg-[#000000] mb-6 relative group rounded-sm flex items-center">
             <!-- Window Body -->
             <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
-              <code><span class="text-[#27C93F]">curl</span> <span class="opacity-60">-fsSL</span> <span class="text-[#FFBD2E]">{installUrl}</span> <span class="opacity-60">|</span> <span class="text-[#27C93F]">bash</span></code>
+              <code><span class="text-[var(--paper)] font-bold">curl</span> <span class="opacity-60">-fsSL</span> <span class="opacity-80 underline underline-offset-4">{installUrl}</span> <span class="opacity-40">|</span> <span class="text-[var(--paper)] font-bold">bash</span></code>
             </div>
             <div class="absolute right-2">
               <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100" id="copy-btn" data-url={installUrl}>
@@ -115,9 +115,9 @@ if (user?.role === 'admin') {
           <div class="text-sm opacity-80 mt-6">
             <div class="font-bold uppercase tracking-widest text-xs mb-3 opacity-60">Next Steps:</div>
             <ol class="list-decimal list-inside space-y-3">
-              <li>Log in to your account: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="text-green-400">za</span> login</code></li>
-              <li>Ask a question: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="text-green-400">za</span> <span class="text-blue-300">"Hello world!"</span></code></li>
-              <li>Use reasoning: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="text-green-400">za</span> <span class="opacity-60">-t</span> <span class="text-blue-300">"Explain quantum physics"</span></code></li>
+              <li>Log in to your account: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="font-bold">za</span> login</code></li>
+              <li>Ask a question: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="font-bold">za</span> <span class="opacity-80 underline underline-offset-4">"Hello world!"</span></code></li>
+              <li>Use reasoning: <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1.5 py-0.5 rounded ml-1 text-[var(--paper)]"><span class="font-bold">za</span> <span class="opacity-60">-t</span> <span class="opacity-80 underline underline-offset-4">"Explain quantum physics"</span></code></li>
             </ol>
           </div>
         </div>
@@ -147,7 +147,7 @@ if (user?.role === 'admin') {
                     <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
                       <td class="p-4 text-sm font-mono">{u.username}</td>
                       <td class="p-4 text-sm">
-                        <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--blue)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
+                        <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                           {u.role}
                         </span>
                       </td>
@@ -194,7 +194,7 @@ if (user?.role === 'admin') {
                       <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
                         <td class="p-4 text-sm font-mono">{req.username}</td>
                         <td class="p-4 text-sm">
-                          <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--blue)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
+                          <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                             {req.status}
                           </span>
                         </td>
@@ -229,7 +229,7 @@ if (user?.role === 'admin') {
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="api-enabled" class="sr-only peer" checked={apiEnabled}>
-                    <div class="w-11 h-6 bg-[rgba(242,242,242,0.2)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-[var(--blue)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--paper)] after:border-[var(--border)] after:border after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--paper)]"></div>
+                    <div class="w-11 h-6 bg-[rgba(242,242,242,0.2)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-[var(--black)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--paper)] after:border-[var(--border)] after:border after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--paper)]"></div>
                   </label>
                 </div>
 
@@ -253,7 +253,7 @@ if (user?.role === 'admin') {
     /* Add explicit active state styling for tabs to keep HTML clean */
     .tab-btn.active {
       background-color: var(--paper);
-      color: var(--blue);
+      color: var(--black);
       opacity: 1;
     }
   </style>

@@ -23,7 +23,7 @@ if (cookie) {
     <h1 class="text-2xl font-bold mb-6 text-center uppercase tracking-widest">Login</h1>
     
     <form id="login-form" class="space-y-4">
-      <div id="error-msg" class="hidden text-red-500 text-sm mb-4"></div>
+      <div id="error-msg" class="hidden text-[var(--paper)] text-sm mb-4 border-2 border-[var(--paper)] bg-[rgba(242,242,242,0.1)] p-3 font-bold"></div>
       <div>
         <label for="username" class="block text-sm mb-1 uppercase tracking-wider">Username</label>
         <input type="text" id="username" name="username" class="field" autocomplete="username" required />
@@ -36,7 +36,7 @@ if (cookie) {
     </form>
     
     {import.meta.env.DEV && (
-      <button type="button" id="guest-login-btn" class="btn-ghost w-full justify-center mt-4 !text-yellow-400 !border-yellow-500/30 border">
+      <button type="button" id="guest-login-btn" class="btn-ghost w-full justify-center mt-4 border border-[var(--border)] !text-[var(--paper)]">
         Login as Guest Admin (Dev)
       </button>
     )}

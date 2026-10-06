@@ -14,7 +14,7 @@ import '../styles/global.css';
     <h1 class="text-2xl font-bold mb-6 text-center uppercase tracking-widest text-[1.2rem]">Request Access</h1>
     
     <div id="status-msg" class="hidden text-sm mb-4 border p-3"></div>
-    <div id="error-msg" class="hidden text-red-500 text-sm mb-4 border border-red-500/30 bg-red-500/10 p-3"></div>
+    <div id="error-msg" class="hidden text-[var(--paper)] text-sm mb-4 border-2 border-[var(--paper)] bg-[rgba(242,242,242,0.1)] p-3 font-bold"></div>
 
     <!-- Step 1: Check/Create Request -->
     <form id="request-form" class="space-y-4">
@@ -51,10 +51,8 @@ import '../styles/global.css';
     let currentUsername = '';
 
     function showStatus(msg: string, type: 'info' | 'success' | 'warning') {
-      statusMsg!.className = 'text-sm mb-4 border p-3 ' + 
-        (type === 'success' ? 'text-green-400 border-green-500/30 bg-green-500/10' : 
-         type === 'warning' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 
-         'text-blue-400 border-blue-500/30 bg-blue-500/10');
+      // In a strict black/white theme, we use grayscale with varying opacities and borders
+      statusMsg!.className = 'text-sm mb-4 border p-3 text-[var(--paper)] bg-[rgba(242,242,242,0.05)] border-[var(--border)]';
       statusMsg!.textContent = msg;
       statusMsg!.classList.remove('hidden');
     }
