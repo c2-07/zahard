@@ -24,15 +24,29 @@ let requests = [];
 let pendingCount = 0;
 
 if (user?.role === 'admin') {
-  apiEnabled = await getSetting('api_enabled') === 'true';
-  defaultExp = parseInt(await getSetting('default_expiration_days') || '1');
-  
-  const { rows: uRows } = await sql`SELECT * FROM users ORDER BY created_at DESC`;
-  users = uRows;
-  
-  const { rows: rRows } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
-  requests = rRows;
-  pendingCount = requests.filter((r: any) => r.status === 'pending').length;
+  if (user.userId === 'guest') {
+    apiEnabled = true;
+    defaultExp = 7;
+    users = [
+      { id: 'mock1', username: 'alice.student', role: 'user', created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000 * 5).toISOString() },
+      { id: 'mock2', username: 'bob.test', role: 'user', created_at: new Date().toISOString(), expires_at: null }
+    ];
+    requests = [
+      { id: 'req1', username: 'charlie.new', status: 'pending', requested_at: new Date().toISOString() },
+      { id: 'req2', username: 'diana.demo', status: 'approved', requested_at: new Date(Date.now() - 3600000).toISOString() }
+    ];
+    pendingCount = 1;
+  } else {
+    apiEnabled = await getSetting('api_enabled') === 'true';
+    defaultExp = parseInt(await getSetting('default_expiration_days') || '1');
+    
+    const { rows: uRows } = await sql`SELECT * FROM users ORDER BY created_at DESC`;
+    users = uRows;
+    
+    const { rows: rRows } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
+    requests = rRows;
+    pendingCount = requests.filter((r: any) => r.status === 'pending').length;
+  }
 } else {
   const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${user?.userId}`;
   userExpiresAt = rows[0]?.expires_at;

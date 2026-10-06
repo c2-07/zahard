@@ -34,12 +34,23 @@ if (cookie) {
       <button type="submit" class="btn-primary w-full justify-center mt-6">Authenticate</button>
     </form>
     
+    {import.meta.env.DEV && (
+      <button type="button" id="guest-login-btn" class="btn-ghost w-full justify-center mt-4 !text-yellow-400 !border-yellow-500/30 border">
+        Login as Guest Admin (Dev)
+      </button>
+    )}
+    
     <div class="mt-6 text-center text-sm">
       <a href="/request-access" class="hover:underline opacity-80 uppercase tracking-widest">Request Access</a>
     </div>
   </div>
 
   <script>
+    document.getElementById('guest-login-btn')?.addEventListener('click', () => {
+      document.cookie = "session=guest_admin; path=/";
+      window.location.href = '/dashboard';
+    });
+
     document.getElementById('login-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = (document.getElementById('username') as HTMLInputElement).value;
