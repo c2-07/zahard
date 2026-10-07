@@ -8,9 +8,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     await initSchema();
     await seedAdmin();
 
-    const { username, password } = await request.json();
+    const { username, password, pzaword } = await request.json();
+    const submittedPassword = password ?? pzaword;
 
-    if (!username || !password) {
+    if (!username || !submittedPassword) {
       return new Response(JSON.stringify({ error: 'Missing credentials' }), { status: 400 });
     }
 
@@ -31,7 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
     }
 
-    const isValid = await verifyPassword(password, user.password_hash);
+    const isValid = await verifyPassword(submittedPassword, user.password_hash);
     if (!isValid) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
     }
