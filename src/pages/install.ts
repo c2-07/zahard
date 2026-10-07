@@ -48,15 +48,15 @@ _uninstall() {
 _login() {
     printf "Username: "
     read -r username
-    printf "Pzaword: "
+    printf "Password: "
     stty -echo 2>/dev/null || true
-    read -r pzaword
+    read -r password
     stty echo 2>/dev/null || true
     printf "\\n"
 
     mkdir -p "$(dirname "$COOKIE_FILE")"
 
-    if ! curl_output=$(curl -fsSL -c "$COOKIE_FILE" -H 'Content-Type: application/json' --data "{\\"username\\":\\"$username\\",\\"pzaword\\":\\"$pzaword\\"}" "$API_URL/auth/login" 2>&1); then
+    if ! curl_output=$(curl -fsSL -c "$COOKIE_FILE" -H 'Content-Type: application/json' --data "{\\"username\\":\\"$username\\",\\"password\\":\\"$password\\"}" "$API_URL/auth/login" 2>&1); then
         echo "Login failed. Network error or incorrect credentials." >&2
         rm -f "$COOKIE_FILE"
         exit 1

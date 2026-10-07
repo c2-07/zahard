@@ -68,9 +68,9 @@ function Load-WebSession {
 
 function Login-Za {
   $username = Read-Host 'Username'
-  $securePassword = Read-Host 'Pzaword' -AsSecureString
+  $securePassword = Read-Host 'Password' -AsSecureString
   $password = [System.Net.NetworkCredential]::new('', $securePassword).Password
-  $body = @{ username = $username; pzaword = $password } | ConvertTo-Json -Compress
+  $body = @{ username = $username; password = $password } | ConvertTo-Json -Compress
 
   try {
     Invoke-WebRequest -Uri "$ApiUrl/auth/login" -Method Post -ContentType 'application/json' -Body $body -SessionVariable session | Out-Null
