@@ -57,9 +57,8 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   if (!cookie) return new Response('Unauthorized', { status: 401 });
 
   const session = await verifySession(cookie.value);
-  if (!session || session.role !== 'admin') {
-    return new Response('Forbidden', { status: 403 });
-  }
+  if (!session) return new Response('Unauthorized', { status: 401 });
+  if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const { rows: requests } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
 

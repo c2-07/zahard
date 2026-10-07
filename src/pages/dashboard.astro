@@ -148,7 +148,8 @@ if (user?.role === 'admin') {
             </div>
 
             <div class="card overflow-hidden">
-              <table class="w-full text-left border-collapse">
+              <div class="overflow-auto scrollbar-hide">
+              <table class="w-full text-left border-collapse min-w-[720px]">
                 <thead>
                   <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
                     <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
@@ -181,6 +182,7 @@ if (user?.role === 'admin') {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </section>
 
@@ -195,7 +197,8 @@ if (user?.role === 'admin') {
               {requests.length === 0 ? (
                 <div class="p-6 text-center opacity-60 text-sm uppercase tracking-widest">No pending requests</div>
               ) : (
-                <table class="w-full text-left border-collapse">
+                <div class="overflow-auto scrollbar-hide">
+                <table class="w-full text-left border-collapse min-w-[720px]">
                   <thead>
                     <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
                       <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
@@ -224,6 +227,7 @@ if (user?.role === 'admin') {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </section>
