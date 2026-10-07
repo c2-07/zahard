@@ -7,9 +7,8 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   if (!cookie) return new Response('Unauthorized', { status: 401 });
 
   const session = await verifySession(cookie.value);
-  if (!session || session.role !== 'admin') {
-    return new Response('Forbidden', { status: 403 });
-  }
+  if (!session) return new Response('Unauthorized', { status: 401 });
+  if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const reqId = params.id;
   const { action } = await request.json();

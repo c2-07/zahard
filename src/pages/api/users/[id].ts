@@ -7,9 +7,8 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   if (!cookie) return new Response('Unauthorized', { status: 401 });
 
   const session = await verifySession(cookie.value);
-  if (!session || session.role !== 'admin') {
-    return new Response('Forbidden', { status: 403 });
-  }
+  if (!session) return new Response('Unauthorized', { status: 401 });
+  if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const userId = params.id;
   const body = await request.json();
@@ -47,9 +46,8 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
   if (!cookie) return new Response('Unauthorized', { status: 401 });
 
   const session = await verifySession(cookie.value);
-  if (!session || session.role !== 'admin') {
-    return new Response('Forbidden', { status: 403 });
-  }
+  if (!session) return new Response('Unauthorized', { status: 401 });
+  if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const userId = params.id;
   
