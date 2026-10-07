@@ -15,6 +15,7 @@ if (!user) {
 const host = Astro.url.host;
 const protocol = Astro.url.protocol;
 const installUrl = `${protocol}//${host}/install`;
+const windowsInstallUrl = `${installUrl}/windows`;
 
 let apiEnabled = false;
 let defaultExp = 1;
@@ -98,17 +99,31 @@ if (user?.role === 'admin') {
         <!-- Install Instructions -->
         <div class="card p-6 mb-8">
           <h2 class="text-xl font-bold uppercase tracking-wider mb-4">CLI Installation</h2>
-          <p class="mb-4 text-sm opacity-80">Run this command in your terminal to install the `za` CLI locally:</p>
-          
-          <div class="border border-[var(--border)] bg-[#000000] mb-6 relative group rounded-sm flex items-center">
-            <!-- Window Body -->
-            <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
-              <code><span class="text-[var(--paper)] font-bold">curl</span> <span class="opacity-60">-fsSL</span> <span class="opacity-80 underline underline-offset-4">{installUrl}</span> <span class="opacity-40">|</span> <span class="text-[var(--paper)] font-bold">bash</span></code>
+          <p class="mb-4 text-sm opacity-80">Run the command for your operating system to install the `za` CLI locally:</p>
+
+          <div class="space-y-4 mb-6">
+            <div class="text-[10px] uppercase tracking-widest opacity-60">macOS / Linux</div>
+            <div class="border border-[var(--border)] bg-[#000000] relative group rounded-sm flex items-center">
+              <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
+                <code>curl -fsSL {installUrl} | bash</code>
+              </div>
+              <div class="absolute right-2">
+                <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100 copy-btn" data-command={`curl -fsSL ${installUrl} | bash`}>
+                  Copy
+                </button>
+              </div>
             </div>
-            <div class="absolute right-2">
-              <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100" id="copy-btn" data-url={installUrl}>
-                Copy
-              </button>
+
+            <div class="text-[10px] uppercase tracking-widest opacity-60">Windows (PowerShell)</div>
+            <div class="border border-[var(--border)] bg-[#000000] relative group rounded-sm flex items-center">
+              <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
+                <code>irm {windowsInstallUrl} | iex</code>
+              </div>
+              <div class="absolute right-2">
+                <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100 copy-btn" data-command={`irm ${windowsInstallUrl} | iex`}>
+                  Copy
+                </button>
+              </div>
             </div>
           </div>
           
@@ -314,21 +329,21 @@ if (user?.role === 'admin') {
     });
 
     // Copy Button Logic
-    const copyBtn = document.getElementById('copy-btn');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', async () => {
-        const url = copyBtn.getAttribute('data-url');
-        const text = `curl -fsSL ${url} | bash`;
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const button = btn as HTMLButtonElement;
+        const text = button.getAttribute('data-command');
+        if (!text) return;
         try {
           await navigator.clipboard.writeText(text);
-          const originalText = copyBtn.textContent;
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+          const originalText = button.textContent;
+          button.textContent = 'Copied!';
+          setTimeout(() => { button.textContent = originalText; }, 2000);
         } catch (err) {
           console.error('Failed to copy', err);
         }
       });
-    }
+    });
 
     // Admin Actions
     const settingsForm = document.getElementById('settings-form');
