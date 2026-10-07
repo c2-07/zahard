@@ -68,9 +68,7 @@ if (user?.role === 'admin') {
           </button>
           <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="requests">
             Requests
-            {pendingCount > 0 && (
-              <span class="bg-[var(--paper)] text-[var(--black)] px-1.5 py-0.5 ml-2 font-mono">{pendingCount}</span>
-            )}
+            <span id="pending-count-badge" class={`bg-[var(--paper)] text-[var(--black)] px-1.5 py-0.5 ml-2 font-mono ${pendingCount > 0 ? '' : 'hidden'}`}>{pendingCount}</span>
           </button>
           <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="settings">
             Settings
@@ -153,25 +151,25 @@ if (user?.role === 'admin') {
                 <thead>
                   <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
                     <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
-                    <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Role</th>
-                    <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Expires At</th>
-                    <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden sm:table-cell">Role</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell">Expires At</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u: any) => (
                     <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
-                      <td class="p-4 text-sm font-mono">{u.username}</td>
-                      <td class="p-4 text-sm">
-                        <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
+                     <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{u.username}</td>
+                     <td class="p-3 sm:p-4 text-xs sm:text-sm hidden sm:table-cell">
+                       <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                           {u.role}
                         </span>
                       </td>
                       <td class="p-4 text-sm font-mono opacity-80">
-                        {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
+                       {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
                       </td>
                       <td class="p-4 text-right space-x-2 whitespace-nowrap">
-                        {u.role !== 'admin' && (
+                       {u.role !== 'admin' && (
                           <>
                             <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>Extend...</button>
                             <button class="btn-danger !text-xs delete-btn" data-id={u.id}>Revoke</button>
@@ -194,32 +192,30 @@ if (user?.role === 'admin') {
             </div>
 
             <div class="card overflow-hidden">
-              {requests.length === 0 ? (
-                <div class="p-6 text-center opacity-60 text-sm uppercase tracking-widest">No pending requests</div>
-              ) : (
-                <div class="overflow-auto scrollbar-hide">
-                <table class="w-full text-left border-collapse min-w-[720px]">
+              <div id="requests-empty" class={`p-6 text-center opacity-60 text-sm uppercase tracking-widest ${requests.length === 0 ? '' : 'hidden'}`}>No pending requests</div>
+              <div id="requests-table-wrapper" class={`overflow-auto scrollbar-hide ${requests.length === 0 ? 'hidden' : ''}`}>
+                <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
-                      <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
-                      <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Status</th>
-                      <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell">Requested At</th>
-                      <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Status</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell">Requested At</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody id="requests-body">
                     {requests.map((req: any) => (
-                      <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
-                        <td class="p-4 text-sm font-mono">{req.username}</td>
-                        <td class="p-4 text-sm">
+                     <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors" data-request-row-id={req.id}>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{req.username}</td>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm">
                           <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                             {req.status}
                           </span>
                         </td>
-                        <td class="p-4 text-sm opacity-80 hidden md:table-cell">{new Date(req.requested_at).toLocaleString()}</td>
-                        <td class="p-4 text-right space-x-2 whitespace-nowrap">
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell">{new Date(req.requested_at).toLocaleString()}</td>
+                       <td class="p-3 sm:p-4 text-right space-y-2 sm:space-y-0 sm:space-x-2 whitespace-nowrap">
                           {req.status === 'pending' && (
-                            <button class="btn-ghost !text-xs approve-btn" data-id={req.id}>Approve</button>
+                           <button class="btn-success !text-xs approve-btn" data-id={req.id}>Approve</button>
                           )}
                           <button class="btn-danger !text-xs reject-btn" data-id={req.id}>Delete</button>
                         </td>
@@ -227,8 +223,7 @@ if (user?.role === 'admin') {
                     ))}
                   </tbody>
                 </table>
-                </div>
-              )}
+              </div>
             </div>
           </section>
 
@@ -366,9 +361,79 @@ if (user?.role === 'admin') {
       });
     }
 
-    document.querySelectorAll('.extend-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+    const pendingBadge = document.getElementById('pending-count-badge');
+    const requestsBody = document.getElementById('requests-body');
+    const requestsEmpty = document.getElementById('requests-empty');
+    const requestsTableWrapper = document.getElementById('requests-table-wrapper');
+
+    const escapeHtml = (value: string) =>
+      value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
+    const updatePendingBadge = (count: number) => {
+      if (!pendingBadge) return;
+      pendingBadge.textContent = String(count);
+      pendingBadge.classList.toggle('hidden', count === 0);
+    };
+
+    const renderRequests = (requests: any[]) => {
+      if (!requestsBody || !requestsEmpty || !requestsTableWrapper) return;
+
+      if (requests.length === 0) {
+        requestsBody.innerHTML = '';
+        requestsEmpty.classList.remove('hidden');
+        requestsTableWrapper.classList.add('hidden');
+        updatePendingBadge(0);
+        return;
+      }
+
+      requestsEmpty.classList.add('hidden');
+      requestsTableWrapper.classList.remove('hidden');
+
+      requestsBody.innerHTML = requests.map((req) => `
+        <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors" data-request-row-id="${req.id}">
+          <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">${escapeHtml(req.username)}</td>
+          <td class="p-3 sm:p-4 text-xs sm:text-sm">
+            <span class="inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}">
+              ${escapeHtml(req.status)}
+            </span>
+          </td>
+          <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell">${new Date(req.requested_at).toLocaleString()}</td>
+          <td class="p-3 sm:p-4 text-right space-y-2 sm:space-y-0 sm:space-x-2 whitespace-nowrap">
+            ${req.status === 'pending' ? `<button class="btn-success !text-xs approve-btn" data-id="${req.id}">Approve</button>` : ''}
+            <button class="btn-danger !text-xs reject-btn" data-id="${req.id}">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+
+      updatePendingBadge(requests.filter((req) => req.status === 'pending').length);
+    };
+
+    const refreshRequests = async () => {
+      if (!requestsBody || !requestsEmpty || !requestsTableWrapper) return;
+      try {
+        const res = await fetch('/api/access-requests');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderRequests(Array.isArray(data) ? data : []);
+      } catch {
+        // ignore polling errors
+      }
+    };
+
+    refreshRequests();
+    setInterval(refreshRequests, 10000);
+
+    document.addEventListener('click', async (event) => {
+      const button = (event.target as HTMLElement).closest('button');
+      if (!button) return;
+
+      if (button.classList.contains('extend-btn')) {
+        const id = (button as HTMLButtonElement).dataset.id;
         const result = await promptExpiration();
         if (!result) return;
 
@@ -380,42 +445,58 @@ if (user?.role === 'admin') {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.ok) window.location.reload();
-      });
-    });
+        if (res.ok) {
+          await customAlert('User expiration updated.');
+          window.location.reload();
+          return;
+        }
+        const errorText = await res.text();
+        await customAlert(errorText || 'Failed to update user expiration.');
+      }
 
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      if (button.classList.contains('delete-btn')) {
         if (!(await customConfirm('Are you sure you want to revoke access for this user?'))) return;
-        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+        const id = (button as HTMLButtonElement).dataset.id;
         const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
-        if (res.ok) window.location.reload();
-      });
-    });
+        if (res.ok) {
+          button.closest('tr')?.remove();
+          await customAlert('User access revoked.');
+          return;
+        }
+        const errorText = await res.text();
+        await customAlert(errorText || 'Failed to revoke user access.');
+      }
 
-    document.querySelectorAll('.approve-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+      if (button.classList.contains('approve-btn')) {
+        const id = (button as HTMLButtonElement).dataset.id;
         const res = await fetch(`/api/access-requests/${id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'approve' })
         });
-        if (res.ok) window.location.reload();
-      });
-    });
+        if (res.ok) {
+          await refreshRequests();
+          return;
+        }
+        const errorText = await res.text();
+        await customAlert(errorText || 'Failed to approve request.');
+      }
 
-    document.querySelectorAll('.reject-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      if (button.classList.contains('reject-btn')) {
         if (!(await customConfirm('Are you sure you want to delete this request?'))) return;
-        const id = (e.currentTarget as HTMLButtonElement).dataset.id;
+        const id = (button as HTMLButtonElement).dataset.id;
         const res = await fetch(`/api/access-requests/${id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'reject' })
         });
-        if (res.ok) window.location.reload();
-      });
+        if (res.ok) {
+          await refreshRequests();
+          return;
+        }
+        const errorText = await res.text();
+        await customAlert(errorText || 'Failed to delete request.');
+      }
     });
   </script>
 </DashboardLayout>

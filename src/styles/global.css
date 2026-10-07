@@ -77,14 +77,31 @@
     transform: scaleX(1);
   }
 
+  .btn-success {
+    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-[#22c55e] bg-transparent text-[#86efac] z-10 hover:text-[var(--black)];
+  }
+  .btn-success::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: #22c55e;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: -1;
+  }
+  .btn-success:hover::before {
+    transform: scaleX(1);
+  }
+
   .btn-danger {
-    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-[var(--border)] bg-transparent text-[var(--paper)] z-10 hover:border-[var(--paper)];
+    @apply relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase cursor-pointer transition-colors duration-300 border outline-none select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed border-[#ef4444] bg-transparent text-[#fca5a5] z-10 hover:text-[var(--black)];
   }
   .btn-danger::before {
     content: '';
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(242, 242, 242, 0.15); 
+    background-color: #ef4444; 
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
@@ -93,10 +110,6 @@
   .btn-danger:hover::before {
     transform: scaleX(1);
   }
-  .btn-danger:hover {
-    color: var(--black);
-  }
-
   .field {
     @apply w-full bg-[rgba(242,242,242,0.07)] border border-[var(--border)] text-[var(--paper)] text-sm px-3.5 py-2.5 outline-none placeholder:opacity-40 focus:border-[rgba(242,242,242,0.5)] transition-colors;
   }
