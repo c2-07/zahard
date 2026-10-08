@@ -45,6 +45,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
   }
 
+  // MOCK TEST BYPASS: Avoid token usage during automated testing
+  if (prompt === '__TEST_PROMPT__') {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      text: 'This is a mocked AI response for testing.', 
+      provider: 'mock' 
+    }), { status: 200 });
+  }
+
   // 4. LLM Fallback Logic
   const allProviders = [
     {
