@@ -8,6 +8,8 @@ jobs:
   build-and-release:
     name: Build for ${{ matrix.os }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
