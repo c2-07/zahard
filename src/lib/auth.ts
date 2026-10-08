@@ -1,7 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
+const SECRET_KEY = process.env.JWT_SECRET || (import.meta.env.DEV ? 'fallback-secret-key-change-in-production' : '');
+if (!SECRET_KEY) {
+  throw new Error('JWT_SECRET environment variable is missing in production!');
+}
 const encodedSecret = new TextEncoder().encode(SECRET_KEY);
 
 export async function hashPassword(password: string): Promise<string> {
