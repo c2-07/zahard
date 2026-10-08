@@ -43,6 +43,11 @@ if (user?.role === 'admin') {
     const { rows: uRows } = await sql`SELECT * FROM users ORDER BY created_at DESC`;
     users = uRows;
     
+    const { rows: sessions } = await sql`SELECT * FROM user_sessions ORDER BY last_active DESC`;
+    users.forEach(u => {
+      u.sessions = sessions.filter(s => s.user_id === u.id);
+    });
+    
     const { rows: rRows } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
     requests = rRows;
     pendingCount = requests.filter((r: any) => r.status === 'pending').length;
@@ -157,25 +162,62 @@ if (user?.role === 'admin') {
                 </thead>
                 <tbody>
                   {users.map((u: any) => (
-                    <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors">
-                     <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{u.username}</td>
-                     <td class="p-3 sm:p-4 text-xs sm:text-sm hidden sm:table-cell">
-                       <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td class="p-4 text-sm font-mono opacity-80">
-                       {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
-                      </td>
-                      <td class="p-4 text-right space-x-2 whitespace-nowrap">
-                       {u.role !== 'admin' && (
-                          <>
-                            <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>Extend...</button>
-                            <button class="btn-danger !text-xs delete-btn" data-id={u.id}>Revoke</button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
+                    <>
+                      <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors cursor-pointer user-row" data-id={u.id}>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{u.username}</td>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm hidden sm:table-cell">
+                         <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td class="p-4 text-sm font-mono opacity-80">
+                         {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
+                        </td>
+                        <td class="p-4 text-right space-x-2 whitespace-nowrap">
+                         <button class="btn-ghost !text-xs logout-all-btn" data-id={u.id}>Logout Everywhere</button>
+                         {u.role !== 'admin' && (
+                            <>
+                              <button class="btn-ghost !text-xs extend-btn" data-id={u.id}>Extend...</button>
+                              <button class="btn-danger !text-xs delete-btn" data-id={u.id}>Revoke</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded Details Row */}
+                      <tr id={`details-${u.id}`} class="hidden bg-[rgba(242,242,242,0.01)] border-b border-[var(--border)]">
+                        <td colspan="4" class="p-4 sm:p-6 text-sm">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-3">API Usage</div>
+                              <div class="text-2xl font-mono">${u.api_calls || 0} <span class="text-xs opacity-60 ml-1">requests</span></div>
+                            </div>
+                            
+                            <div>
+                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-3">Active Sessions</div>
+                              {(!u.sessions || u.sessions.length === 0) ? (
+                                <div class="opacity-60 italic text-xs">No active sessions.</div>
+                              ) : (
+                                <div class="space-y-3">
+                                  {u.sessions.map((s: any) => (
+                                    <div class="flex items-center justify-between text-xs p-3 border border-[var(--border)] bg-[#000000] rounded-sm">
+                                      <div>
+                                        <div class="font-mono mb-1">{s.ip}</div>
+                                        <div class="opacity-60">{s.location}</div>
+                                      </div>
+                                      <div class="text-right">
+                                        <div class="opacity-60 truncate max-w-[150px]" title={s.device}>{s.device}</div>
+                                        <div class="opacity-40 mt-1">${new Date(s.last_active).toLocaleString()}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </>
                   ))}
                 </tbody>
               </table>
@@ -296,32 +338,52 @@ if (user?.role === 'admin') {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
+    const switchTab = (target: string) => {
+      tabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('opacity-60', 'hover:opacity-100', 'hover:bg-[rgba(242,242,242,0.05)]');
+      });
+      tabContents.forEach(c => {
+        c.classList.add('hidden');
+        c.classList.remove('block');
+      });
+      
+      const btn = document.querySelector(`.tab-btn[data-target="${target}"]`);
+      if (btn) {
+        btn.classList.add('active');
+        btn.classList.remove('opacity-60', 'hover:opacity-100', 'hover:bg-[rgba(242,242,242,0.05)]');
+      }
+      const targetSection = document.getElementById(target);
+      if (targetSection) {
+        targetSection.classList.remove('hidden');
+        targetSection.classList.add('block');
+      }
+    };
+
+    // Initialize tab from hash or default to overview
+    const initialTab = window.location.hash ? window.location.hash.substring(1) : 'overview';
+    switchTab(initialTab);
+
     tabBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         const target = (e.currentTarget as HTMLButtonElement).dataset.target;
+        if (target) {
+          window.location.hash = target;
+          switchTab(target);
+        }
+      });
+    });
 
-        // Reset all buttons
-        tabBtns.forEach(b => {
-          b.classList.remove('active');
-          b.classList.add('opacity-60', 'hover:opacity-100', 'hover:bg-[rgba(242,242,242,0.05)]');
-        });
+    // Accordion Logic
+    document.querySelectorAll('.user-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        // Prevent if clicking a button
+        if ((e.target as HTMLElement).closest('button')) return;
         
-        // Hide all content
-        tabContents.forEach(c => {
-          c.classList.add('hidden');
-          c.classList.remove('block');
-        });
-
-        // Activate clicked button
-        const curr = e.currentTarget as HTMLButtonElement;
-        curr.classList.add('active');
-        curr.classList.remove('opacity-60', 'hover:opacity-100', 'hover:bg-[rgba(242,242,242,0.05)]');
-
-        // Show target content
-        const targetSection = document.getElementById(target!);
-        if (targetSection) {
-          targetSection.classList.remove('hidden');
-          targetSection.classList.add('block');
+        const id = (row as HTMLElement).dataset.id;
+        const detailsRow = document.getElementById(`details-${id}`);
+        if (detailsRow) {
+          detailsRow.classList.toggle('hidden');
         }
       });
     });
@@ -446,6 +508,7 @@ if (user?.role === 'admin') {
         });
         if (res.ok) {
           await customAlert('User expiration updated.');
+          window.location.hash = 'users';
           window.location.reload();
           return;
         }
@@ -495,6 +558,24 @@ if (user?.role === 'admin') {
         }
         const errorText = await res.text();
         await customAlert(errorText || 'Failed to delete request.');
+      }
+      
+      if (button.classList.contains('logout-all-btn')) {
+        if (!(await customConfirm('Are you sure you want to log this user out of all devices?'))) return;
+        const id = (button as HTMLButtonElement).dataset.id;
+        const res = await fetch(`/api/users/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'logout_all' })
+        });
+        if (res.ok) {
+          await customAlert('User logged out everywhere.');
+          window.location.hash = 'users';
+          window.location.reload();
+          return;
+        }
+        const errorText = await res.text();
+        await customAlert(errorText || 'Failed to logout user.');
       }
     });
   </script>

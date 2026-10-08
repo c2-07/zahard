@@ -37,7 +37,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
     }
 
-    const token = await createSession(user.id, user.role);
+    const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
+    const cityHeader = request.headers.get('x-vercel-ip-city') || 'Unknown';
+    const countryHeader = request.headers.get('x-vercel-ip-country') || 'Unknown';
+    
+    const city = decodeURIComponent(cityHeader);
+    const country = decodeURIComponent(countryHeader);
+    const userAgent = request.headers.get('user-agent') || 'Unknown Device';
+
+    const { randomUUID } = await import('node:crypto');
+    const sessionId = randomUUID();
+    const tokenVersion = user.token_version || 1;
+
+    await sql`
+      INSERT INTO user_sessions (id, user_id, ip, location, device)
+      VALUES (${sessionId}, ${user.id}, ${ip}, ${`${city}, ${country}`}, ${userAgent})
+    `;
+
+    const token = await createSession(user.id, user.role, tokenVersion, sessionId);
     
     cookies.set('session', token, {
       path: '/',
@@ -49,14 +66,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (user.role === 'admin') {
       const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (webhookUrl) {
-        const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
-        const cityHeader = request.headers.get('x-vercel-ip-city') || 'Unknown';
-        const countryHeader = request.headers.get('x-vercel-ip-country') || 'Unknown';
-        
-        const city = decodeURIComponent(cityHeader);
-        const country = decodeURIComponent(countryHeader);
-        const userAgent = request.headers.get('user-agent') || 'Unknown Device';
-        
         const message = {
           embeds: [{
             title: "🚨 Admin Login Detected",

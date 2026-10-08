@@ -32,6 +32,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
   }
 
+  // Increment API usage (fire and forget)
+  sql`UPDATE users SET api_calls = COALESCE(api_calls, 0) + 1 WHERE id = ${session.userId}`.catch(()=>{});
+
   // 3. Extract prompt
   let body;
   try {
@@ -41,8 +44,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const { prompt, thinking } = body;
-  if (!prompt) {
-    return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
+  if (!prompt || typeof prompt !== 'string') {
+    return new Response(JSON.stringify({ error: 'Prompt is required and must be a string' }), { status: 400 });
+  }
+
+  if (prompt.length > 50000) {
+    return new Response(JSON.stringify({ error: 'Prompt exceeds maximum length (50000 characters)' }), { status: 413 });
   }
 
   // MOCK TEST BYPASS: Avoid token usage during automated testing

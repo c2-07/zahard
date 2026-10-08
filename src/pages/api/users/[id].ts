@@ -38,6 +38,12 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
 
+  if (action === 'logout_all') {
+    await sql`UPDATE users SET token_version = token_version + 1 WHERE id = ${userId}`;
+    await sql`DELETE FROM user_sessions WHERE user_id = ${userId}`;
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  }
+
   return new Response('Invalid action', { status: 400 });
 };
 
