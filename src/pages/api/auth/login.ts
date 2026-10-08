@@ -50,8 +50,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
       if (webhookUrl) {
         const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
-        const city = request.headers.get('x-vercel-ip-city') || 'Unknown';
-        const country = request.headers.get('x-vercel-ip-country') || 'Unknown';
+        const cityHeader = request.headers.get('x-vercel-ip-city') || 'Unknown';
+        const countryHeader = request.headers.get('x-vercel-ip-country') || 'Unknown';
+        
+        const city = decodeURIComponent(cityHeader);
+        const country = decodeURIComponent(countryHeader);
         const userAgent = request.headers.get('user-agent') || 'Unknown Device';
         
         const message = {
