@@ -12,6 +12,20 @@ export async function initSchema() {
     );
   `;
 
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;`.catch(()=>console.log('token_version exists'));
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS api_calls INT DEFAULT 0;`.catch(()=>console.log('api_calls exists'));
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+      ip VARCHAR(255),
+      location VARCHAR(255),
+      device TEXT,
+      last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
   await sql`
     CREATE TABLE IF NOT EXISTS access_requests (
       id VARCHAR(255) PRIMARY KEY,
@@ -20,6 +34,7 @@ export async function initSchema() {
       requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
+  await sql`ALTER TABLE access_requests ADD COLUMN IF NOT EXISTS password_hash TEXT;`.catch(()=>console.log('password_hash exists'));
 
   await sql`
     CREATE TABLE IF NOT EXISTS settings (

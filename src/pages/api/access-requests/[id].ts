@@ -14,7 +14,23 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   const { action } = await request.json();
 
   if (action === 'approve') {
-    await sql`UPDATE access_requests SET status = 'approved' WHERE id = ${reqId}`;
+    const { rows } = await sql`SELECT * FROM access_requests WHERE id = ${reqId}`;
+    const reqRow = rows[0];
+    if (!reqRow) return new Response('Not found', { status: 404 });
+
+    const { getSetting } = await import('../../../lib/db');
+    const { randomUUID } = await import('node:crypto');
+    
+    const defaultExp = parseInt(await getSetting('default_expiration_days') || '1');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + defaultExp);
+
+    await sql`
+      INSERT INTO users (id, username, password_hash, role, expires_at) 
+      VALUES (${randomUUID()}, ${reqRow.username}, ${reqRow.password_hash || ''}, 'user', ${expiresAt.toISOString()})
+    `;
+    await sql`DELETE FROM access_requests WHERE id = ${reqId}`;
+
     return new Response(JSON.stringify({ success: true }), { status: 200 });
 
   } else if (action === 'reject') {

@@ -16,22 +16,16 @@ import '../styles/global.css';
     <div id="status-msg" class="hidden text-sm mb-4 border p-3"></div>
     <div id="error-msg" class="hidden text-[var(--paper)] text-sm mb-4 border-2 border-[var(--paper)] bg-[rgba(242,242,242,0.1)] p-3 font-bold"></div>
 
-    <!-- Step 1: Check/Create Request -->
     <form id="request-form" class="space-y-4">
       <div>
         <label for="username" class="block text-sm mb-1 uppercase tracking-wider">Email / Username</label>
         <input type="text" id="username" name="username" class="field" autocomplete="username" required />
       </div>
-      <button type="submit" class="btn-primary w-full justify-center mt-6">Check / Submit Request</button>
-    </form>
-
-    <!-- Step 2: Set Password (hidden initially) -->
-    <form id="password-form" class="space-y-4 hidden mt-4">
       <div>
-        <label for="password" class="block text-sm mb-1 uppercase tracking-wider">Set a Password</label>
+        <label for="password" class="block text-sm mb-1 uppercase tracking-wider">Desired Password</label>
         <input type="password" id="password" name="password" class="field" autocomplete="new-password" required />
       </div>
-      <button type="submit" class="btn-primary w-full justify-center mt-6">Create Account</button>
+      <button type="submit" class="btn-primary w-full justify-center mt-6">Submit Request</button>
     </form>
     
     <div class="mt-6 text-center text-sm">
@@ -45,13 +39,10 @@ import '../styles/global.css';
     animate('.card', { scale: [0.95, 1], opacity: [0, 1] }, { duration: 0.4, easing: 'ease-out' });
 
     const requestForm = document.getElementById('request-form');
-    const passwordForm = document.getElementById('password-form');
     const statusMsg = document.getElementById('status-msg');
     const errorMsg = document.getElementById('error-msg');
-    let currentUsername = '';
 
-    function showStatus(msg: string, type: 'info' | 'success' | 'warning') {
-      // In a strict black/white theme, we use grayscale with varying opacities and borders
+    function showStatus(msg: string) {
       statusMsg!.className = 'text-sm mb-4 border p-3 text-[var(--paper)] bg-[rgba(242,242,242,0.05)] border-[var(--border)]';
       statusMsg!.textContent = msg;
       statusMsg!.classList.remove('hidden');
@@ -59,7 +50,8 @@ import '../styles/global.css';
 
     requestForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      currentUsername = (document.getElementById('username') as HTMLInputElement).value;
+      const username = (document.getElementById('username') as HTMLInputElement).value;
+      const password = (document.getElementById('password') as HTMLInputElement).value;
       
       errorMsg?.classList.add('hidden');
       statusMsg?.classList.add('hidden');
@@ -68,50 +60,22 @@ import '../styles/global.css';
         const res = await fetch('/api/access-requests', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: currentUsername })
+          body: JSON.stringify({ username, password })
         });
         
         const data = await res.json();
         
         if (res.ok) {
-          if (data.state === 'approved') {
-            showStatus(data.message, 'success');
-            requestForm.classList.add('hidden');
-            passwordForm?.classList.remove('hidden');
-          } else if (data.state === 'pending' || data.state === 'created') {
-            showStatus(data.message, 'info');
-          } else if (data.state === 'active') {
-            showStatus(data.message, 'success');
+          showStatus(data.message);
+          if (data.state === 'active' || data.state === 'approved') {
+            setTimeout(() => {
+              window.location.href = '/login';
+            }, 2000);
+          } else {
             requestForm.classList.add('hidden');
           }
         } else {
           errorMsg!.textContent = data.error || 'Failed to process request';
-          errorMsg?.classList.remove('hidden');
-        }
-      } catch (err) {
-        errorMsg!.textContent = 'Network error';
-        errorMsg?.classList.remove('hidden');
-      }
-    });
-
-    passwordForm?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const password = (document.getElementById('password') as HTMLInputElement).value;
-      
-      errorMsg?.classList.add('hidden');
-      
-      try {
-        const res = await fetch('/api/access-requests/set-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: currentUsername, password })
-        });
-        
-        if (res.ok) {
-          window.location.href = '/login';
-        } else {
-          const data = await res.json();
-          errorMsg!.textContent = data.error || 'Failed to set password';
           errorMsg?.classList.remove('hidden');
         }
       } catch (err) {

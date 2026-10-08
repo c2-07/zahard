@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { sql, initSchema, seedAdmin } from '../../../lib/db';
-import { verifySession } from '../../../lib/auth';
+import { verifySession, hashPassword } from '../../../lib/auth';
 import { randomUUID } from 'node:crypto';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -8,9 +8,9 @@ export const POST: APIRoute = async ({ request }) => {
     await initSchema();
     await seedAdmin();
     
-    const { username } = await request.json();
-    if (!username) {
-      return new Response(JSON.stringify({ error: 'Username/Email is required' }), { status: 400 });
+    const { username, password } = await request.json();
+    if (!username || !password) {
+      return new Response(JSON.stringify({ error: 'Username and password are required' }), { status: 400 });
     }
 
     // Check if user already exists in users table
@@ -37,14 +37,15 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (existingReq) {
       if (existingReq.status === 'approved') {
-        return new Response(JSON.stringify({ state: 'approved', message: 'Your request is approved! Please set your password.' }), { status: 200 });
+        return new Response(JSON.stringify({ state: 'approved', message: 'Your request was already approved! Please login.' }), { status: 200 });
       } else {
         return new Response(JSON.stringify({ state: 'pending', message: 'Your request is still pending admin approval.' }), { status: 200 });
       }
     }
 
-    // Insert new request
-    await sql`INSERT INTO access_requests (id, username, status) VALUES (${randomUUID()}, ${username}, 'pending')`;
+    // Hash password and insert new request
+    const hashed = await hashPassword(password);
+    await sql`INSERT INTO access_requests (id, username, password_hash, status) VALUES (${randomUUID()}, ${username}, ${hashed}, 'pending')`;
 
     return new Response(JSON.stringify({ state: 'created', message: 'Request submitted successfully. Waiting for admin approval.' }), { status: 201 });
   } catch (err: any) {
