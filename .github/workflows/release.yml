@@ -19,9 +19,6 @@ jobs:
             target: aarch64-unknown-linux-gnu
             artifact_name: za-linux-aarch64
           - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: za-macos-x86_64
-          - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: za-macos-aarch64
           - os: windows-latest
@@ -44,8 +41,8 @@ jobs:
       - name: Build Binary
         working-directory: ./cli
         env:
-          # Change this to your production API URL!
-          ZA_DEFAULT_API_URL: "https://your-production-url.com/api"
+          # Production API URL
+          ZA_DEFAULT_API_URL: "https://zahard.vercel.app/api"
           # For Linux ARM cross-compilation
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
