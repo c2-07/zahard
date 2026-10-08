@@ -32,7 +32,10 @@ struct MakeResponse {
     details: Option<serde_json::Value>,
 }
 
-const DEFAULT_API_URL: &str = "http://localhost:4321/api";
+const DEFAULT_API_URL: &str = match option_env!("ZA_DEFAULT_API_URL") {
+    Some(url) => url,
+    None => "http://localhost:4321/api",
+};
 
 fn get_config_dir() -> PathBuf {
     let mut path = dirs::config_dir().unwrap_or_else(|| {
