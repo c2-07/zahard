@@ -6,7 +6,7 @@ set -e
 
 # --- Configuration ---
 # Update this to your actual GitHub repository (e.g., "gourav/zahard")
-GITHUB_REPO="yourusername/zahard"
+GITHUB_REPO="c2-07/zahard"
 INSTALL_DIR="$HOME/.local/bin"
 
 echo "Installing 'za' CLI from $GITHUB_REPO..."

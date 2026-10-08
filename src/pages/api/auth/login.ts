@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       maxAge: 60 * 60 * 24 // 1 day
     });
 
-    return new Response(JSON.stringify({ success: true, role: user.role }), { status: 200 });
+    return new Response(JSON.stringify({ success: true, role: user.role, username: user.username }), { status: 200 });
 
   } catch (err: any) {
     console.error('Login error:', err);

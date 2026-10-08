@@ -12,7 +12,7 @@ describe('Install Scripts', () => {
     const text = await response.text();
     
     expect(response.status).toBe(200);
-    expect(text).toContain('GITHUB_REPO="yourusername/zahard"');
+    expect(text).toContain('GITHUB_REPO="c2-07/zahard"');
     expect(text).toContain('https://github.com/$GITHUB_REPO/releases/latest/download');
     // Multi-shell support should still be there for path config
     expect(text).toContain('zsh)');
@@ -27,7 +27,7 @@ describe('Install Scripts', () => {
     const text = await response.text();
     
     expect(response.status).toBe(200);
-    expect(text).toContain('$GithubRepo = "yourusername/zahard"');
+    expect(text).toContain('$GithubRepo = "c2-07/zahard"');
     expect(text).toContain('Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZaExePath');
     expect(text).toContain('https://github.com/$GithubRepo/releases/latest/download/$BinaryName');
   });

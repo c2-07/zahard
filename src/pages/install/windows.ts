@@ -5,7 +5,7 @@ export const GET: APIRoute = async () => {
 
 # --- Configuration ---
 # Update this to your actual GitHub repository (e.g., "gourav/zahard")
-$GithubRepo = "yourusername/zahard"
+$GithubRepo = "c2-07/zahard"
 
 $InstallDir = Join-Path $env:LOCALAPPDATA 'za\\bin'
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
