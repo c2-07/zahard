@@ -1,14 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
-import { GET as getUnixInstall } from '../src/pages/install';
-import { GET as getWindowsInstall } from '../src/pages/install/windows';
+import { describe, it, expect } from 'vitest';
+import { GET as getInstall } from '../src/pages/install';
 
 describe('Install Scripts', () => {
-  const mockContext = {
-    request: new Request('http://localhost:4321/install'),
-  } as any;
 
   it('generates valid Unix downloader script', async () => {
-    const response = await getUnixInstall(mockContext);
+    const mockContext = {
+      request: new Request('http://localhost:4321/install', {
+        headers: new Headers({ 'User-Agent': 'curl/7.81.0' })
+      }),
+    } as any;
+    
+    const response = await getInstall(mockContext);
     const text = await response.text();
     
     expect(response.status).toBe(200);
@@ -22,8 +24,14 @@ describe('Install Scripts', () => {
     expect(text).toContain('nu|nushell)');
   });
 
-  it('generates valid Windows downloader script', async () => {
-    const response = await getWindowsInstall(mockContext);
+  it('generates valid Windows downloader script when User-Agent is PowerShell', async () => {
+    const mockContext = {
+      request: new Request('http://localhost:4321/install', {
+        headers: new Headers({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WindowsPowerShell/5.1' })
+      }),
+    } as any;
+    
+    const response = await getInstall(mockContext);
     const text = await response.text();
     
     expect(response.status).toBe(200);

@@ -15,7 +15,6 @@ if (!user) {
 const host = Astro.url.host;
 const protocol = Astro.url.protocol;
 const installUrl = `${protocol}//${host}/install`;
-const windowsInstallUrl = `${installUrl}/windows`;
 
 let apiEnabled = false;
 let defaultExp = 1;
@@ -115,10 +114,10 @@ if (user?.role === 'admin') {
             <div class="text-[10px] uppercase tracking-widest opacity-60">Windows (PowerShell)</div>
             <div class="border border-[var(--border)] bg-[#000000] relative group rounded-sm flex items-center">
               <div class="p-3 sm:p-4 pr-20 font-mono text-xs sm:text-sm text-[var(--paper)] overflow-x-auto whitespace-pre w-full scrollbar-hide">
-                <code>irm {windowsInstallUrl} | iex</code>
+                <code>irm {installUrl} | iex</code>
               </div>
               <div class="absolute right-2">
-                <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100 copy-btn" data-command={`irm ${windowsInstallUrl} | iex`}>
+                <button type="button" class="btn-ghost !px-3 !py-1.5 !text-[10px] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:opacity-100 copy-btn" data-command={`irm ${installUrl} | iex`}>
                   Copy
                 </button>
               </div>
