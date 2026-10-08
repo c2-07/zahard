@@ -46,6 +46,40 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       maxAge: 60 * 60 * 24 // 1 day
     });
 
+    if (user.role === 'admin') {
+      const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (webhookUrl) {
+        const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
+        const city = request.headers.get('x-vercel-ip-city') || 'Unknown';
+        const country = request.headers.get('x-vercel-ip-country') || 'Unknown';
+        const userAgent = request.headers.get('user-agent') || 'Unknown Device';
+        
+        const message = {
+          embeds: [{
+            title: "🚨 Admin Login Detected",
+            color: 16711680, // Red
+            fields: [
+              { name: "Username", value: user.username, inline: true },
+              { name: "IP Address", value: ip, inline: true },
+              { name: "Location", value: `${city}, ${country}`, inline: true },
+              { name: "Device", value: userAgent, inline: false },
+            ],
+            timestamp: new Date().toISOString()
+          }]
+        };
+
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(message)
+          });
+        } catch (err) {
+          console.error("Failed to send webhook:", err);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ success: true, role: user.role, username: user.username }), { status: 200 });
 
   } catch (err: any) {
