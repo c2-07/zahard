@@ -15,10 +15,27 @@ $InstallDir = Join-Path $env:LOCALAPPDATA 'za\\bin'
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
 $ZaExePath = Join-Path $InstallDir 'za.exe'
-$BinaryName = "za-windows-x86_64.exe"
+
+# Detect Architecture
+$rawArch = $env:PROCESSOR_ARCHITECTURE
+if ($env:PROCESSOR_ARCHITEW6432) {
+  $rawArch = $env:PROCESSOR_ARCHITEW6432
+}
+
+switch -Regex ($rawArch) {
+  'ARM64' { $ArchName = 'aarch64' }
+  'AMD64' { $ArchName = 'x86_64' }
+  default {
+    Write-Error "Unsupported architecture: $rawArch"
+    exit 1
+  }
+}
+
+$BinaryName = "za-windows-$ArchName.exe"
 $DownloadUrl = "https://github.com/$GithubRepo/releases/latest/download/$BinaryName"
 
 Write-Output "Installing 'za' CLI from $GithubRepo..."
+Write-Output "Detected architecture: $rawArch ($ArchName)"
 Write-Output "Downloading $BinaryName..."
 
 try {
@@ -70,8 +87,9 @@ echo "Installing 'za' CLI from $GITHUB_REPO..."
 # Detect OS
 OS="$(uname -s)"
 case "$OS" in
-    Linux*)     OS_NAME="linux";;
-    Darwin*)    OS_NAME="macos";;
+    Linux*)     OS_NAME="linux"; EXT="";;
+    Darwin*)    OS_NAME="macos"; EXT="";;
+    CYGWIN*|MINGW*|MSYS*) OS_NAME="windows"; EXT=".exe";;
     *)          echo "Unsupported OS: $OS" >&2; exit 1;;
 esac
 
@@ -83,19 +101,20 @@ case "$ARCH" in
     *)            echo "Unsupported architecture: $ARCH" >&2; exit 1;;
 esac
 
-BINARY_NAME="za-\${OS_NAME}-\${ARCH_NAME}"
+BINARY_NAME="za-\${OS_NAME}-\${ARCH_NAME}\${EXT}"
 DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/latest/download/$BINARY_NAME"
+TARGET_BIN="$INSTALL_DIR/za\${EXT}"
 
 mkdir -p "$INSTALL_DIR"
 
 echo "Downloading $BINARY_NAME..."
-if ! curl -fsSL -o "$INSTALL_DIR/za" "$DOWNLOAD_URL"; then
+if ! curl -fsSL -o "$TARGET_BIN" "$DOWNLOAD_URL"; then
     echo "Error: Failed to download the binary." >&2
     echo "Make sure you have published a release with the asset '$BINARY_NAME' to $GITHUB_REPO" >&2
     exit 1
 fi
 
-chmod +x "$INSTALL_DIR/za"
+chmod +x "$TARGET_BIN"
 
 # --- PATH Configuration ---
 add_to_path() {

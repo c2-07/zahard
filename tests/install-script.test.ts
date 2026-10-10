@@ -16,6 +16,9 @@ describe('Install Scripts', () => {
     expect(response.status).toBe(200);
     expect(text).toContain('GITHUB_REPO="c2-07/zahard"');
     expect(text).toContain('https://github.com/$GITHUB_REPO/releases/latest/download');
+    expect(text).toContain('OS="$(uname -s)"');
+    expect(text).toContain('ARCH="$(uname -m)"');
+    expect(text).toContain('BINARY_NAME="za-${OS_NAME}-${ARCH_NAME}${EXT}"');
     // Multi-shell support should still be there for path config
     expect(text).toContain('zsh)');
     expect(text).toContain('bash)');
@@ -24,7 +27,7 @@ describe('Install Scripts', () => {
     expect(text).toContain('nu|nushell)');
   });
 
-  it('generates valid Windows downloader script when User-Agent is PowerShell', async () => {
+  it('generates valid Windows downloader script when User-Agent is PowerShell with architecture detection', async () => {
     const mockContext = {
       request: new Request('http://localhost:4321/install', {
         headers: new Headers({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WindowsPowerShell/5.1' })
@@ -36,6 +39,10 @@ describe('Install Scripts', () => {
     
     expect(response.status).toBe(200);
     expect(text).toContain('$GithubRepo = "c2-07/zahard"');
+    expect(text).toContain('$rawArch = $env:PROCESSOR_ARCHITECTURE');
+    expect(text).toContain("'ARM64' { $ArchName = 'aarch64' }");
+    expect(text).toContain("'AMD64' { $ArchName = 'x86_64' }");
+    expect(text).toContain('$BinaryName = "za-windows-$ArchName.exe"');
     expect(text).toContain('Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZaExePath');
     expect(text).toContain('https://github.com/$GithubRepo/releases/latest/download/$BinaryName');
   });

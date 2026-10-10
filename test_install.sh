@@ -4,210 +4,45 @@ set -e
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-cat > "$INSTALL_DIR/za" <<'EOF'
-#!/bin/sh
-set -e
-
-API_URL="http://localhost:4321/api"
-CONFIG_DIR="$HOME/.config/za"
-COOKIE_FILE="$CONFIG_DIR/cookie"
-USER_FILE="$CONFIG_DIR/user"
+# Repository information
+GITHUB_REPO="c2-07/zahard"
 INSTALL_DIR="$HOME/.local/bin"
 
-_usage() {
-    echo "Usage: za [OPTIONS] <PROMPT>"
-    echo ""
-    echo "Commands:"
-    echo "  login        Log in to your account"
-    echo "  logout       Log out from your account"
-    echo "  whoami       Show current logged-in account info"
-    echo "  uninstall    Remove the CLI from your system"
-    echo "  help         Show this usage guide"
-    echo ""
-    echo "Options:"
-    echo "  -t           Prioritize the Gemini reasoning model"
-    echo ""
-    echo "Examples:"
-    echo "  za login"
-    echo "  za logout"
-    echo "  za whoami"
-    echo "  za \"write a python script to parse logs\""
-    echo "  za -t \"explain quantum physics\""
-}
+echo "Installing 'za' CLI from $GITHUB_REPO..."
 
-_is_logged_in() {
-    [ -f "$COOKIE_FILE" ] && grep -q "session" "$COOKIE_FILE" 2>/dev/null
-}
+# Detect OS
+OS="$(uname -s)"
+case "$OS" in
+    Linux*)     OS_NAME="linux"; EXT="";;
+    Darwin*)    OS_NAME="macos"; EXT="";;
+    CYGWIN*|MINGW*|MSYS*) OS_NAME="windows"; EXT=".exe";;
+    *)          echo "Unsupported OS: $OS" >&2; exit 1;;
+esac
 
-_get_username() {
-    if [ -f "$USER_FILE" ]; then
-        cat "$USER_FILE"
-    else
-        echo "unknown"
-    fi
-}
+# Detect Architecture
+ARCH="$(uname -m)"
+case "$ARCH" in
+    x86_64|amd64) ARCH_NAME="x86_64";;
+    aarch64|arm64) ARCH_NAME="aarch64";;
+    *)            echo "Unsupported architecture: $ARCH" >&2; exit 1;;
+esac
 
-_uninstall() {
-    echo "Uninstalling 'za' CLI..."
-    rm -f "$INSTALL_DIR/za"
-    rm -rf "$CONFIG_DIR"
-    echo "Uninstalled successfully."
-    echo "Note: You may want to manually remove $INSTALL_DIR from your PATH if you don't use it for other tools."
-    exit 0
-}
+BINARY_NAME="za-${OS_NAME}-${ARCH_NAME}${EXT}"
+DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/latest/download/$BINARY_NAME"
+TARGET_BIN="$INSTALL_DIR/za${EXT}"
 
-_logout() {
-    if ! _is_logged_in; then
-        echo "You are not logged in."
-        exit 0
-    fi
+mkdir -p "$INSTALL_DIR"
 
-    logged_user=$(_get_username)
-    echo "Logging out from '$logged_user'..."
+echo "Detected system: $OS_NAME ($ARCH_NAME)"
+echo "Downloading $BINARY_NAME from $DOWNLOAD_URL..."
 
-    # Notify the server to invalidate the session
-    curl -sSL -b "$COOKIE_FILE" -X POST "$API_URL/auth/logout" >/dev/null 2>&1 || true
-
-    rm -f "$COOKIE_FILE" "$USER_FILE"
-    echo "Logged out successfully."
-}
-
-_whoami() {
-    if ! _is_logged_in; then
-        echo "Not logged in."
-        echo "Run 'za login' to log in."
-        exit 0
-    fi
-
-    logged_user=$(_get_username)
-    echo "Logged in as: $logged_user"
-}
-
-_do_login() {
-    printf "Username: "
-    read -r username
-    printf "Password: "
-    stty -echo 2>/dev/null || true
-    read -r password
-    stty echo 2>/dev/null || true
-    printf "\n"
-
-    mkdir -p "$CONFIG_DIR"
-
-    if ! curl_output=$(curl -sSL -c "$COOKIE_FILE" -H 'Content-Type: application/json' --data "{\"username\":\"$username\",\"password\":\"$password\"}" "$API_URL/auth/login" 2>&1); then
-        echo "Login failed. Network error or incorrect credentials." >&2
-        rm -f "$COOKIE_FILE" "$USER_FILE"
-        exit 1
-    fi
-
-    if ! grep -q "session" "$COOKIE_FILE" 2>/dev/null; then
-        echo "Login failed or no cookie returned from server." >&2
-        rm -f "$COOKIE_FILE" "$USER_FILE"
-        exit 1
-    fi
-
-    # Save the username locally for whoami/status
-    echo "$username" > "$USER_FILE"
-    echo "Logged in successfully as '$username'."
-}
-
-_login() {
-    if _is_logged_in; then
-        logged_user=$(_get_username)
-        printf "You are already logged in as '%s'. Logout and re-login? [y/N]: " "$logged_user"
-        read -r confirm
-        case "$confirm" in
-            [yY]|[yY][eE][sS])
-                # Logout first, then continue to login
-                curl -sSL -b "$COOKIE_FILE" -X POST "$API_URL/auth/logout" >/dev/null 2>&1 || true
-                rm -f "$COOKIE_FILE" "$USER_FILE"
-                echo "Logged out from '$logged_user'."
-                ;;
-            *)
-                echo "Staying logged in as '$logged_user'."
-                exit 0
-                ;;
-        esac
-    fi
-
-    _do_login
-}
-
-if [ -z "$1" ] || [ "$1" = "help" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    _usage
-    exit 0
-fi
-
-if [ "$1" = "uninstall" ]; then
-    _uninstall
-fi
-
-if [ "$1" = "login" ]; then
-    _login
-    exit 0
-fi
-
-if [ "$1" = "logout" ]; then
-    _logout
-    exit 0
-fi
-
-if [ "$1" = "whoami" ] || [ "$1" = "status" ]; then
-    _whoami
-    exit 0
-fi
-
-if [ ! -f "$COOKIE_FILE" ] || ! grep -q "session" "$COOKIE_FILE" 2>/dev/null; then
-    echo "Error: Not logged in." >&2
-    echo "Please run: za login" >&2
+if ! curl -fsSL -o "$TARGET_BIN" "$DOWNLOAD_URL"; then
+    echo "Error: Failed to download the binary." >&2
+    echo "Make sure you have published a release with the asset '$BINARY_NAME' to $GITHUB_REPO" >&2
     exit 1
 fi
 
-THINKING="false"
-if [ "$1" = "-t" ]; then
-    THINKING="true"
-    shift
-fi
-
-PROMPT="$*"
-if [ -z "$PROMPT" ]; then
-    echo "Error: Prompt cannot be empty." >&2
-    _usage
-    exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: 'jq' is not installed. Please install it to use this CLI." >&2
-    exit 1
-fi
-
-# Escape JSON for curl
-ESCAPED_PROMPT=$(echo "$PROMPT" | jq -R -s -c '.')
-
-RESPONSE=$(curl -sSL \
-    -b "$COOKIE_FILE" \
-    -w "\n%{http_code}" \
-    -H 'Content-Type: application/json' \
-    --data "{\"prompt\":${ESCAPED_PROMPT}, \"thinking\": $THINKING}" \
-    "$API_URL/make")
-
-HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-BODY=$(echo "$RESPONSE" | sed '$ d')
-
-if [ "$HTTP_STATUS" != "200" ]; then
-    echo "Request failed (HTTP Status: $HTTP_STATUS)" >&2
-    if echo "$BODY" | grep -q '^{'; then
-        echo "$BODY" | jq -r 'if type == "object" then if .details then (.error + "\n" + (.details | to_entries | map("- \(.key): \(.value)") | join("\n"))) else .error end else . end' >&2
-    else
-        echo "Unknown error occurred: $BODY" >&2
-    fi
-    exit 1
-fi
-
-echo "$BODY" | jq -r '.text // .error'
-EOF
-
-chmod +x "$INSTALL_DIR/za"
+chmod +x "$TARGET_BIN"
 
 # --- PATH Configuration ---
 add_to_path() {
