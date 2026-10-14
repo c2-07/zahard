@@ -4,6 +4,9 @@
 npm create astro@latest -- --template minimal
 ```
 
+<img width="2888" height="1730" alt="image" src="https://github.com/user-attachments/assets/1d814a16-68b9-4509-9f5e-db6a0d6327a7" />
+
+
 >  **Seasoned astronaut?** Delete this file. Have fun!
 
 ##  Project Structure
