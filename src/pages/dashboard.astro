@@ -28,8 +28,32 @@ if (user?.role === 'admin') {
     apiEnabled = true;
     defaultExp = 7;
     users = [
-      { id: 'mock1', username: 'alice.student', role: 'user', created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000 * 5).toISOString() },
-      { id: 'mock2', username: 'bob.test', role: 'user', created_at: new Date().toISOString(), expires_at: null }
+      { 
+        id: 'mock1', 
+        username: 'alice.student', 
+        role: 'user', 
+        created_at: new Date().toISOString(), 
+        expires_at: new Date(Date.now() + 86400000 * 5).toISOString(),
+        api_calls: 14,
+        last_used_time: new Date(Date.now() - 1000 * 60 * 12).toLocaleString(),
+        last_used_location: 'New York, US',
+        sessions: [
+          { ip: '192.168.1.102', location: 'New York, US', device: 'za CLI (macOS)', last_active: new Date(Date.now() - 1000 * 60 * 12).toISOString() }
+        ]
+      },
+      { 
+        id: 'mock2', 
+        username: 'bob.test', 
+        role: 'user', 
+        created_at: new Date().toISOString(), 
+        expires_at: null,
+        api_calls: 3,
+        last_used_time: new Date(Date.now() - 1000 * 3600 * 3).toLocaleString(),
+        last_used_location: 'London, GB',
+        sessions: [
+          { ip: '10.0.0.45', location: 'London, GB', device: 'za CLI (Linux)', last_active: new Date(Date.now() - 1000 * 3600 * 3).toISOString() }
+        ]
+      }
     ];
     requests = [
       { id: 'req1', username: 'charlie.new', status: 'pending', requested_at: new Date().toISOString() },
@@ -44,8 +68,30 @@ if (user?.role === 'admin') {
     users = uRows;
     
     const { rows: sessions } = await sql`SELECT * FROM user_sessions ORDER BY last_active DESC`;
-    users.forEach(u => {
-      u.sessions = sessions.filter(s => s.user_id === u.id);
+    users.forEach((u: any) => {
+      const allUserSessions = sessions.filter(s => s.user_id === u.id);
+
+      // Deduplicate: Don't show same IP twice for the same device
+      const seen = new Set<string>();
+      const uniqueSessions: typeof allUserSessions = [];
+      for (const s of allUserSessions) {
+        const key = `${s.device || 'unknown'}-${s.ip || 'unknown'}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueSessions.push(s);
+        }
+      }
+      u.sessions = uniqueSessions;
+
+      // Last time za was used and where
+      const latest = allUserSessions[0];
+      if (latest && latest.last_active) {
+        u.last_used_time = new Date(latest.last_active).toLocaleString();
+        u.last_used_location = (latest.location && latest.location !== 'Unknown, Unknown') ? latest.location : (latest.ip || 'Unknown location');
+      } else {
+        u.last_used_time = null;
+        u.last_used_location = null;
+      }
     });
     
     const { rows: rRows } = await sql`SELECT * FROM access_requests ORDER BY requested_at DESC`;
@@ -59,22 +105,22 @@ if (user?.role === 'admin') {
 ---
 <DashboardLayout title="Dashboard">
   <div class="flex flex-col md:flex-row gap-8 flex-1">
-    <!-- Sidebar Navigation -->
-    <aside class="md:w-56 shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-4 md:pb-0 scrollbar-hide">
-      <button class="tab-btn active w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all" data-target="overview">
+    <!-- Navigation Tabs (Sticky on mobile so they never hide under header) -->
+    <aside class="md:w-56 shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto scrollbar-hide sticky top-[73px] z-20 bg-[var(--black)]/95 backdrop-blur-md pt-1 pb-3 -mx-6 px-6 md:static md:bg-transparent md:p-0 md:top-auto border-b md:border-b-0 border-[var(--border)] md:border-transparent">
+      <button class="tab-btn active w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all whitespace-nowrap" data-target="overview">
         Overview
       </button>
       
       {user.role === 'admin' && (
         <>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="users">
+          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="users">
             Users
           </button>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="requests">
+          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="requests">
             Requests
             <span id="pending-count-badge" class={`bg-[var(--paper)] text-[var(--black)] px-1.5 py-0.5 ml-2 font-mono ${pendingCount > 0 ? '' : 'hidden'}`}>{pendingCount}</span>
           </button>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)]" data-target="settings">
+          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="settings">
             Settings
           </button>
         </>
@@ -187,28 +233,44 @@ if (user?.role === 'admin') {
                       {/* Expanded Details Row */}
                       <tr id={`details-${u.id}`} class="hidden bg-[rgba(242,242,242,0.01)] border-b border-[var(--border)]">
                         <td colspan="4" class="p-4 sm:p-6 text-sm">
-                          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-3">API Usage</div>
-                              <div class="text-2xl font-mono">${u.api_calls || 0} <span class="text-xs opacity-60 ml-1">requests</span></div>
+                          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- API Calls Till Now -->
+                            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-2 font-semibold">API Calls Till Now</div>
+                              <div class="text-2xl font-mono text-[var(--paper)]">{u.api_calls || 0} <span class="text-xs opacity-60 ml-1">requests</span></div>
                             </div>
-                            
-                            <div>
-                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-3">Active Sessions</div>
-                              {(!u.sessions || u.sessions.length === 0) ? (
-                                <div class="opacity-60 italic text-xs">No active sessions.</div>
+
+                            <!-- Last Time za Was Used & Where -->
+                            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-2 font-semibold">Last Used Activity</div>
+                              {u.last_used_time ? (
+                                <div>
+                                  <div class="text-sm font-mono text-[var(--paper)]">{u.last_used_time}</div>
+                                  <div class="text-xs opacity-60 mt-1 flex items-center gap-1.5">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>{u.last_used_location}</span>
+                                  </div>
+                                </div>
                               ) : (
-                                <div class="space-y-3">
+                                <div class="text-xs opacity-60 italic">Never used yet</div>
+                              )}
+                            </div>
+
+                            <!-- Logged In Devices (Deduplicated) -->
+                            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm md:col-span-1">
+                              <div class="text-[10px] uppercase tracking-widest opacity-60 mb-2 font-semibold">Logged In Devices</div>
+                              {(!u.sessions || u.sessions.length === 0) ? (
+                                <div class="opacity-60 italic text-xs">No active devices</div>
+                              ) : (
+                                <div class="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
                                   {u.sessions.map((s: any) => (
-                                    <div class="flex items-center justify-between text-xs p-3 border border-[var(--border)] bg-[#000000] rounded-sm">
-                                      <div>
-                                        <div class="font-mono mb-1">{s.ip}</div>
-                                        <div class="opacity-60">{s.location}</div>
+                                    <div class="text-xs p-2.5 border border-[var(--border)] bg-[#000000] rounded-sm">
+                                      <div class="flex items-center justify-between mb-1">
+                                        <span class="font-mono text-[11px] text-[var(--paper)]">{s.ip}</span>
+                                        <span class="text-[10px] opacity-40">{new Date(s.last_active).toLocaleDateString()}</span>
                                       </div>
-                                      <div class="text-right">
-                                        <div class="opacity-60 truncate max-w-[150px]" title={s.device}>{s.device}</div>
-                                        <div class="opacity-40 mt-1">${new Date(s.last_active).toLocaleString()}</div>
-                                      </div>
+                                      <div class="opacity-60 text-[11px] truncate mb-0.5" title={s.device}>{s.device || 'Unknown Device'}</div>
+                                      <div class="opacity-40 text-[10px]">{s.location || 'Unknown Location'}</div>
                                     </div>
                                   ))}
                                 </div>
@@ -289,14 +351,51 @@ if (user?.role === 'admin') {
                 </div>
 
                 <div>
-                  <label for="default-exp" class="block text-sm mb-2 uppercase tracking-wider font-semibold opacity-80">Default Expiration (Days)</label>
-                  <input type="number" id="default-exp" name="default-exp" class="field w-32" value={defaultExp} min="1" max="365" />
+                  <label for="default-exp" class="block text-sm mb-2 uppercase tracking-wider font-semibold opacity-80">Default Expiration</label>
+                  <input type="number" id="default-exp" name="default-exp" class="field w-32" value={defaultExp} placeholder="Days" min="1" max="365" />
                 </div>
 
-                <div class="pt-2">
+                <div class="pt-2 flex justify-end">
                   <button type="submit" class="btn-primary">Save Settings</button>
                 </div>
               </form>
+            </div>
+
+            <!-- DANGER ZONE -->
+            <div id="danger-zone-card" class="card p-6 max-w-xl mt-8 border border-red-500/40 bg-red-950/10">
+              <div class="flex items-center gap-2 mb-2 text-red-500 font-bold uppercase tracking-widest text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Danger Zone
+              </div>
+              <div class="text-xs opacity-60 mb-6">
+                Irreversible actions that affect all users across the system.
+              </div>
+
+              <div class="space-y-4">
+                <!-- Logout Everyone -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-[var(--border)] p-4 bg-[#000000] rounded-sm">
+                  <div>
+                    <div class="font-bold text-xs uppercase tracking-wider text-[var(--paper)]">Logout Everyone At Once</div>
+                    <div class="text-[11px] opacity-60">Immediately terminates all active sessions across all devices for all users.</div>
+                  </div>
+                  <button id="logout-everyone-btn" type="button" class="btn-danger !text-xs whitespace-nowrap shrink-0">
+                    Logout Everyone
+                  </button>
+                </div>
+
+                <!-- Delete Everyone's Account -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-red-500/30 p-4 bg-[#000000] rounded-sm">
+                  <div>
+                    <div class="font-bold text-xs uppercase tracking-wider text-red-400">Delete All User Accounts</div>
+                    <div class="text-[11px] opacity-60">Permanently removes all user accounts and their history (preserves admin).</div>
+                  </div>
+                  <button id="delete-all-users-btn" type="button" class="btn-danger !bg-red-600 hover:!bg-red-700 !text-xs whitespace-nowrap shrink-0">
+                    Delete All Accounts
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         </>
@@ -360,7 +459,7 @@ if (user?.role === 'admin') {
       }
     };
 
-    // Initialize tab from hash or default to overview
+    // Initialize tab from hash or default to overview without jump-scrolling
     const initialTab = window.location.hash ? window.location.hash.substring(1) : 'overview';
     switchTab(initialTab);
 
@@ -368,8 +467,9 @@ if (user?.role === 'admin') {
       btn.addEventListener('click', (e) => {
         const target = (e.currentTarget as HTMLButtonElement).dataset.target;
         if (target) {
-          window.location.hash = target;
+          history.replaceState(null, '', '#' + target);
           switchTab(target);
+          window.scrollTo({ top: 0, behavior: 'instant' });
         }
       });
     });
@@ -576,6 +676,49 @@ if (user?.role === 'admin') {
         }
         const errorText = await res.text();
         await customAlert(errorText || 'Failed to logout user.');
+      }
+    });
+
+    // Danger Zone: Logout Everyone
+    document.getElementById('logout-everyone-btn')?.addEventListener('click', async () => {
+      if (!(await customConfirm('WARNING: Are you sure you want to log out all users from all devices right now?'))) return;
+      try {
+        const res = await fetch('/api/admin/danger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'logout_everyone' })
+        });
+        if (res.ok) {
+          await customAlert('All users have been logged out of all devices.');
+          window.location.reload();
+          return;
+        }
+        const err = await res.text();
+        await customAlert(err || 'Failed to logout everyone.');
+      } catch {
+        await customAlert('Network error occurred.');
+      }
+    });
+
+    // Danger Zone: Delete All User Accounts
+    document.getElementById('delete-all-users-btn')?.addEventListener('click', async () => {
+      if (!(await customConfirm('CRITICAL: Are you sure you want to delete ALL user accounts? This action is permanent and cannot be undone.'))) return;
+      if (!(await customConfirm('FINAL WARNING: This will immediately delete every non-admin user account and all their sessions. Proceed?'))) return;
+      try {
+        const res = await fetch('/api/admin/danger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete_all_users' })
+        });
+        if (res.ok) {
+          await customAlert('All user accounts have been deleted.');
+          window.location.reload();
+          return;
+        }
+        const err = await res.text();
+        await customAlert(err || 'Failed to delete all users.');
+      } catch {
+        await customAlert('Network error occurred.');
       }
     });
   </script>
