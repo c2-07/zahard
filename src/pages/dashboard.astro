@@ -222,10 +222,10 @@ if (user?.role === 'admin') {
               <table class="w-full text-left border-collapse min-w-[720px]">
                 <thead>
                   <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
-                    <th class="p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
-                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden sm:table-cell">Role</th>
-                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell">Expires At</th>
-                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold whitespace-nowrap min-w-[140px]">User</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden sm:table-cell whitespace-nowrap w-24">Role</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell whitespace-nowrap min-w-[180px]">Expires At</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="users-table-body">
@@ -237,13 +237,13 @@ if (user?.role === 'admin') {
                         data-username={(u.username || '').toLowerCase()}
                         data-status={u.expires_at && new Date(u.expires_at).getTime() < Date.now() ? 'expired' : 'active'}
                       >
-                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{u.username}</td>
-                       <td class="p-3 sm:p-4 text-xs sm:text-sm hidden sm:table-cell">
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono whitespace-nowrap font-medium text-[var(--paper)]">{u.username}</td>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm hidden sm:table-cell whitespace-nowrap">
                          <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${u.role === 'admin' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                             {u.role}
                           </span>
                         </td>
-                        <td class="p-4 text-sm font-mono opacity-80">
+                        <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono opacity-80 whitespace-nowrap">
                          {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
                         </td>
                         <td class="p-4 text-right space-x-2 whitespace-nowrap">
@@ -340,25 +340,25 @@ if (user?.role === 'admin') {
             <div class="card overflow-hidden">
               <div id="requests-empty" class={`p-6 text-center opacity-60 text-sm uppercase tracking-widest ${requests.length === 0 ? '' : 'hidden'}`}>No pending requests</div>
               <div id="requests-table-wrapper" class={`overflow-auto scrollbar-hide ${requests.length === 0 ? 'hidden' : ''}`}>
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse min-w-[640px]">
                   <thead>
                     <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
-                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">User</th>
-                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold">Status</th>
-                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell">Requested At</th>
-                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right">Actions</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold whitespace-nowrap min-w-[140px]">User</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold whitespace-nowrap w-24">Status</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell whitespace-nowrap min-w-[180px]">Requested At</th>
+                      <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="requests-body">
                     {requests.map((req: any) => (
                      <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors" data-request-row-id={req.id}>
-                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">{req.username}</td>
-                       <td class="p-3 sm:p-4 text-xs sm:text-sm">
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono whitespace-nowrap font-medium text-[var(--paper)]">{req.username}</td>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm whitespace-nowrap">
                           <span class={`inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}`}>
                             {req.status}
                           </span>
                         </td>
-                       <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell">{new Date(req.requested_at).toLocaleString()}</td>
+                       <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell whitespace-nowrap">{new Date(req.requested_at).toLocaleString()}</td>
                        <td class="p-3 sm:p-4 text-right space-y-2 sm:space-y-0 sm:space-x-2 whitespace-nowrap">
                           {req.status === 'pending' && (
                            <button class="btn-success !text-xs approve-btn" data-id={req.id}>Approve</button>
@@ -630,13 +630,13 @@ if (user?.role === 'admin') {
 
       requestsBody.innerHTML = requests.map((req) => `
         <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors" data-request-row-id="${req.id}">
-          <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono break-all">${escapeHtml(req.username)}</td>
-          <td class="p-3 sm:p-4 text-xs sm:text-sm">
+          <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono whitespace-nowrap font-medium text-[var(--paper)]">${escapeHtml(req.username)}</td>
+          <td class="p-3 sm:p-4 text-xs sm:text-sm whitespace-nowrap">
             <span class="inline-block px-2 py-1 text-[10px] uppercase tracking-widest ${req.status === 'approved' ? 'bg-[var(--paper)] text-[var(--black)]' : 'bg-[rgba(242,242,242,0.1)]'}">
               ${escapeHtml(req.status)}
             </span>
           </td>
-          <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell">${new Date(req.requested_at).toLocaleString()}</td>
+          <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell whitespace-nowrap">${new Date(req.requested_at).toLocaleString()}</td>
           <td class="p-3 sm:p-4 text-right space-y-2 sm:space-y-0 sm:space-x-2 whitespace-nowrap">
             ${req.status === 'pending' ? `<button class="btn-success !text-xs approve-btn" data-id="${req.id}">Approve</button>` : ''}
             <button class="btn-danger !text-xs reject-btn" data-id="${req.id}">Delete</button>
