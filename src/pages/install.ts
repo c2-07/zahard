@@ -53,20 +53,69 @@ if (-not $userPath) {
 if ($userPath -notlike "*$InstallDir*") {
   $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $InstallDir } else { "$userPath;$InstallDir" }
   [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
-  Write-Output "Added $InstallDir to your user PATH."
+  Write-Output "Added $InstallDir to your User PATH in Registry."
 }
 
+# Add directly into PowerShell Profiles so every new PS session has za in PATH
+$docs = [Environment]::GetFolderPath('MyDocuments')
+$profileList = @(
+  $PROFILE,
+  (Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1'),
+  (Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1')
+) | Select-Object -Unique
+
+foreach ($p in $profileList) {
+  if ($p) {
+    try {
+      $pDir = Split-Path -Parent $p
+      if (-not (Test-Path $pDir)) {
+        New-Item -ItemType Directory -Path $pDir -Force | Out-Null
+      }
+      $line1 = 'if ($env:Path -notlike "*' + $InstallDir + '*") { $env:Path = "' + $InstallDir + ';$env:Path" }'
+      $line2 = '$PSDefaultParameterValues[''Out-File:Encoding''] = ''utf8'''
+      if (-not (Test-Path $p)) {
+        Set-Content -Path $p -Value ($line1 + [Environment]::NewLine + $line2) -Encoding utf8
+        Write-Output "Configured PowerShell profile: $p"
+      } else {
+        $pContent = Get-Content -Path $p -Raw
+        if ($pContent -notlike "*$InstallDir*") {
+          Add-Content -Path $p -Value ([Environment]::NewLine + $line1) -Encoding utf8
+        }
+        if ($pContent -notlike "*Out-File:Encoding*") {
+          Add-Content -Path $p -Value ([Environment]::NewLine + $line2) -Encoding utf8
+        }
+      }
+    } catch {}
+  }
+}
+
+# Auto-refresh active session PATH immediately
 $env:Path = "$InstallDir;$env:Path"
 
+# Remove any legacy user identity file if present for privacy
+$legacyUserFile = Join-Path $env:APPDATA 'za\\user'
+if (Test-Path $legacyUserFile) { Remove-Item -Force $legacyUserFile }
+$legacyConfigUser = Join-Path $HOME '.config\\za\\user'
+if (Test-Path $legacyConfigUser) { Remove-Item -Force $legacyConfigUser }
+
+$ESC = [char]27
+$BLUE = "$ESC[1;34m"
+$RESET = "$ESC[0m"
+
 Write-Output '----------------------------------------'
-Write-Output "Successfully installed 'za' CLI for Windows!"
+Write-Output "  Successfully installed 'za' CLI!"
 Write-Output '----------------------------------------'
-Write-Output 'If this is a new terminal, restart it before running za.'
 Write-Output ''
-Write-Output 'Getting started:'
-Write-Output '  1. Login:   za login'
-Write-Output '  2. Ask:     za "Hello world!"'
-Write-Output '  3. Help:    za help'
+Write-Output 'Quick Start:'
+Write-Output '  za login                Log in to your account'
+Write-Output '  za "your question"      Ask anything / generate code'
+Write-Output '  za -o file.c prompt     Save clean code to file (No null errors!)'
+Write-Output '  za -t "hard problem"    Prioritize reasoning model'
+Write-Output '  za help                 Show all commands'
+Write-Output ''
+Write-Output "Run this now to enable 'za' in this terminal:"
+Write-Output "  $BLUE. \$PROFILE$RESET  (or restart PowerShell)"
+Write-Output ''
 `;
     return new Response(psScript, {
       status: 200,
@@ -178,22 +227,52 @@ fi
 
 export PATH="$INSTALL_DIR:$PATH"
 
+# Remove legacy user identity file if present for privacy
+rm -f "$HOME/.config/za/user" 2>/dev/null || true
+
+# Determine source command for detected shell (NEVER use . notation)
+case "$SHELL_NAME" in
+    zsh)
+        RELOAD_CMD="source ~/.zshrc"
+        ;;
+    bash)
+        RELOAD_CMD="source ~/.bashrc"
+        ;;
+    fish)
+        RELOAD_CMD="source ~/.config/fish/config.fish"
+        ;;
+    ksh|mksh)
+        RELOAD_CMD="source ~/.kshrc"
+        ;;
+    csh|tcsh)
+        RELOAD_CMD="source ~/.cshrc"
+        ;;
+    nu|nushell)
+        RELOAD_CMD="source ~/.config/nushell/env.nu"
+        ;;
+    *)
+        RELOAD_CMD="source ~/.profile"
+        ;;
+esac
+
+BLUE='\\033[1;34m'
+RESET='\\033[0m'
+
 echo ""
 echo "----------------------------------------"
 echo "  Successfully installed 'za' CLI!"
 echo "----------------------------------------"
-if [ "$SHELL_NAME" = "fish" ]; then
-    echo "Please run 'source ~/.config/fish/config.fish' or restart your terminal."
-elif [ "$SHELL_NAME" = "nu" ] || [ "$SHELL_NAME" = "nushell" ]; then
-    echo "Please run 'source ~/.config/nushell/env.nu' or restart your terminal."
-else
-    echo "Please restart your terminal or run: . ~/.\${SHELL_NAME}rc"
-fi
 echo ""
-echo "Getting started:"
-echo "  1. Login:   za login"
-echo "  2. Ask:     za \\"Hello world!\\""
-echo "  3. Help:    za help"
+echo "Quick Start:"
+echo "  za login                Log in to your account"
+echo "  za \"your question\"      Ask anything / generate code"
+echo "  za -o file.c prompt     Save clean code to file (No null errors!)"
+echo "  za -t \"hard problem\"    Prioritize reasoning model"
+echo "  za help                 Show all commands"
+echo ""
+echo "Run this now to enable 'za' in this terminal:"
+printf "  %b%s%b\\n" "\$BLUE" "\$RELOAD_CMD" "\$RESET"
+echo ""
 `;
 
   return new Response(shScript, {

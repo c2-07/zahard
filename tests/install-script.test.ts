@@ -24,7 +24,12 @@ describe('Install Scripts', () => {
     expect(text).toContain('bash)');
     expect(text).toContain('fish)');
     expect(text).toContain('ksh|mksh)');
-    expect(text).toContain('nu|nushell)');
+    // Verify source reload command, blue ANSI code, and no dot notation
+    expect(text).toContain('source ~/.bashrc');
+    expect(text).not.toContain('. ~/.${SHELL_NAME}rc');
+    expect(text).toContain('BLUE=\'\\033[1;34m\'');
+    expect(text).toContain('za -o file.c');
+    expect(text).toContain('rm -f "$HOME/.config/za/user"');
   });
 
   it('generates valid Windows downloader script when User-Agent is PowerShell with architecture detection', async () => {
@@ -45,5 +50,10 @@ describe('Install Scripts', () => {
     expect(text).toContain('$BinaryName = "za-windows-$ArchName.exe"');
     expect(text).toContain('Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZaExePath');
     expect(text).toContain('https://github.com/$GithubRepo/releases/latest/download/$BinaryName');
+    // Verify PowerShell profile persistence and UTF-8 Out-File encoding
+    expect(text).toContain('$PROFILE');
+    expect(text).toContain("Out-File:Encoding");
+    expect(text).toContain('za -o file.c');
+    expect(text).toContain('legacyConfigUser');
   });
 });

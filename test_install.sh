@@ -111,21 +111,49 @@ fi
 
 export PATH="$INSTALL_DIR:$PATH"
 
+# Remove legacy user identity file if present for privacy
+rm -f "$HOME/.config/za/user" 2>/dev/null || true
+
+# Determine source command for detected shell (NEVER use . notation)
+case "$SHELL_NAME" in
+    zsh)
+        RELOAD_CMD="source ~/.zshrc"
+        ;;
+    bash)
+        RELOAD_CMD="source ~/.bashrc"
+        ;;
+    fish)
+        RELOAD_CMD="source ~/.config/fish/config.fish"
+        ;;
+    ksh|mksh)
+        RELOAD_CMD="source ~/.kshrc"
+        ;;
+    csh|tcsh)
+        RELOAD_CMD="source ~/.cshrc"
+        ;;
+    nu|nushell)
+        RELOAD_CMD="source ~/.config/nushell/env.nu"
+        ;;
+    *)
+        RELOAD_CMD="source ~/.profile"
+        ;;
+esac
+
+BLUE='\033[1;34m'
+RESET='\033[0m'
+
 echo ""
 echo "----------------------------------------"
 echo "  Successfully installed 'za' CLI!"
 echo "----------------------------------------"
-if [ "$SHELL_NAME" = "fish" ]; then
-    echo "Please run 'source ~/.config/fish/config.fish' or restart your terminal."
-elif [ "$SHELL_NAME" = "nu" ] || [ "$SHELL_NAME" = "nushell" ]; then
-    echo "Please run 'source ~/.config/nushell/env.nu' or restart your terminal."
-else
-    echo "Please restart your terminal or run: . ~/.${SHELL_NAME}rc"
-fi
 echo ""
-echo "Getting started:"
-echo "  1. Login:   za login"
-echo "  2. Ask:     za \"Hello world!\""
-echo "  3. Status:  za whoami"
-echo "  4. Logout:  za logout"
-echo "  5. Help:    za help"
+echo "Quick Start:"
+echo "  za login                Log in to your account"
+echo "  za \"your question\"      Ask anything / generate code"
+echo "  za -o file.c prompt     Save clean code to file (No null errors!)"
+echo "  za -t \"hard problem\"    Prioritize reasoning model"
+echo "  za help                 Show all commands"
+echo ""
+echo "Run this now to enable 'za' in this terminal:"
+printf "  %b%s%b\n" "$BLUE" "$RELOAD_CMD" "$RESET"
+echo ""
