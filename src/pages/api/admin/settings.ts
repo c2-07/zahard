@@ -10,10 +10,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!session) return new Response('Unauthorized', { status: 401 });
   if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
-  const { api_enabled, default_expiration_days } = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON request' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
-  if (api_enabled !== undefined) await setSetting('api_enabled', api_enabled);
+  const { api_enabled, default_expiration_days } = body;
+
+  if (api_enabled !== undefined) await setSetting('api_enabled', api_enabled.toString());
   if (default_expiration_days !== undefined) await setSetting('default_expiration_days', default_expiration_days.toString());
 
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
+  return new Response(JSON.stringify({ success: true }), { 
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 };

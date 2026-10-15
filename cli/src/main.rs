@@ -94,8 +94,13 @@ fn cmd_login() {
     io::stdin().read_line(&mut username).unwrap();
     let username = username.trim().to_string();
 
-    let password = rpassword::prompt_password("Password: ").unwrap();
+    let password = rpassword::prompt_password("Password: ").unwrap_or_default();
     println!();
+
+    if username.is_empty() || password.is_empty() {
+        eprintln!("Error: Username and password cannot be empty.");
+        process::exit(1);
+    }
 
     let config_dir = get_config_dir();
     fs::create_dir_all(&config_dir).unwrap();
@@ -394,7 +399,10 @@ fn main() {
     // Check for piped stdin (e.g., cat file.c | za "prompt" or cat file.c | za)
     let mut piped_input = String::new();
     if !io::stdin().is_terminal() {
-        let _ = io::stdin().read_to_string(&mut piped_input);
+        let mut buffer = Vec::new();
+        if io::stdin().read_to_end(&mut buffer).is_ok() {
+            piped_input = String::from_utf8_lossy(&buffer).to_string();
+        }
     }
     let has_pipe = !piped_input.trim().is_empty();
 

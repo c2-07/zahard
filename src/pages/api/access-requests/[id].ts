@@ -11,12 +11,24 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const reqId = params.id;
-  const { action } = await request.json();
+  let action: string | undefined;
+  try {
+    const body = await request.json();
+    action = body.action;
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON request' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
   if (action === 'approve') {
     const { rows } = await sql`SELECT * FROM access_requests WHERE id = ${reqId}`;
     const reqRow = rows[0];
-    if (!reqRow) return new Response('Not found', { status: 404 });
+    if (!reqRow) return new Response(JSON.stringify({ error: 'Not found' }), { 
+      status: 404,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
     const { getSetting } = await import('../../../lib/db');
     const { randomUUID } = await import('node:crypto');
@@ -26,17 +38,26 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     expiresAt.setDate(expiresAt.getDate() + defaultExp);
 
     await sql`
-      INSERT INTO users (id, username, password_hash, role, expires_at) 
-      VALUES (${randomUUID()}, ${reqRow.username}, ${reqRow.password_hash || ''}, 'user', ${expiresAt.toISOString()})
+      INSERT INTO users (id, username, password_hash, role, expires_at, token_version) 
+      VALUES (${randomUUID()}, ${reqRow.username}, ${reqRow.password_hash || ''}, 'user', ${expiresAt.toISOString()}, 1)
     `;
     await sql`DELETE FROM access_requests WHERE id = ${reqId}`;
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
   } else if (action === 'reject') {
     await sql`DELETE FROM access_requests WHERE id = ${reqId}`;
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
+  return new Response(JSON.stringify({ error: 'Invalid action' }), { 
+    status: 400,
+    headers: { 'Content-Type': 'application/json' }
+  });
 };

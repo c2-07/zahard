@@ -11,14 +11,25 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   if (session.role !== 'admin') return new Response('Forbidden', { status: 403 });
 
   const userId = params.id;
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON request' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
   const { action } = body;
 
   if (action === 'extend') {
     const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${userId}`;
     const user = rows[0];
 
-    if (!user) return new Response('Not found', { status: 404 });
+    if (!user) return new Response(JSON.stringify({ error: 'Not found' }), { 
+      status: 404,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
     const currentExp = user.expires_at ? new Date(user.expires_at) : new Date();
     // if already expired, start from now
@@ -35,27 +46,42 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
       await sql`UPDATE users SET expires_at = ${baseDate.toISOString()} WHERE id = ${userId}`;
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   if (action === 'logout_all') {
-    await sql`UPDATE users SET token_version = token_version + 1 WHERE id = ${userId}`;
+    await sql`UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ${userId}`;
     await sql`DELETE FROM user_sessions WHERE user_id = ${userId}`;
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   if (action === 'reset_password') {
     const { newPassword } = body;
     if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
-      return new Response(JSON.stringify({ error: 'Password must be at least 4 characters long' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Password must be at least 4 characters long' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     const { hashPassword } = await import('../../../lib/auth');
     const hashed = await hashPassword(newPassword);
-    await sql`UPDATE users SET password_hash = ${hashed}, token_version = token_version + 1 WHERE id = ${userId}`;
-    return new Response(JSON.stringify({ success: true, message: 'Password reset successfully' }), { status: 200 });
+    await sql`UPDATE users SET password_hash = ${hashed}, token_version = COALESCE(token_version, 1) + 1 WHERE id = ${userId}`;
+    return new Response(JSON.stringify({ success: true, message: 'Password reset successfully' }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  return new Response('Invalid action', { status: 400 });
+  return new Response(JSON.stringify({ error: 'Invalid action' }), { 
+    status: 400,
+    headers: { 'Content-Type': 'application/json' }
+  });
 };
 
 export const DELETE: APIRoute = async ({ params, cookies }) => {

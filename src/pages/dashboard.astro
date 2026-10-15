@@ -792,8 +792,8 @@ if (user?.role === 'admin') {
     const requestsEmpty = document.getElementById('requests-empty');
     const requestsTableWrapper = document.getElementById('requests-table-wrapper');
 
-    const escapeHtml = (value: string) =>
-      value
+    const escapeHtml = (value: any) =>
+      String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
@@ -820,7 +820,11 @@ if (user?.role === 'admin') {
       requestsEmpty.classList.add('hidden');
       requestsTableWrapper.classList.remove('hidden');
 
-      requestsBody.innerHTML = requests.map((req) => `
+      requestsBody.innerHTML = requests.map((req) => {
+        const reqDate = req.requested_at ? new Date(req.requested_at) : null;
+        const formattedDate = reqDate && !isNaN(reqDate.getTime()) ? reqDate.toLocaleString() : 'Recent';
+
+        return `
         <tr class="border-b border-[var(--border)] last:border-0 hover:bg-[rgba(242,242,242,0.02)] transition-colors" data-request-row-id="${req.id}">
           <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono whitespace-nowrap font-medium text-[var(--paper)]">${escapeHtml(req.username)}</td>
           <td class="p-3 sm:p-4 text-xs sm:text-sm whitespace-nowrap">
@@ -828,13 +832,14 @@ if (user?.role === 'admin') {
               ${escapeHtml(req.status)}
             </span>
           </td>
-          <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell whitespace-nowrap">${new Date(req.requested_at).toLocaleString()}</td>
+          <td class="p-3 sm:p-4 text-xs sm:text-sm opacity-80 hidden md:table-cell whitespace-nowrap">${formattedDate}</td>
           <td class="p-3 sm:p-4 text-right space-y-2 sm:space-y-0 sm:space-x-2 whitespace-nowrap">
             ${req.status === 'pending' ? `<button class="btn-success !text-xs approve-btn" data-id="${req.id}">Approve</button>` : ''}
             <button class="btn-danger !text-xs reject-btn" data-id="${req.id}">Delete</button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       updatePendingBadge(requests.filter((req) => req.status === 'pending').length);
     };

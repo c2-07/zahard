@@ -8,18 +8,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   // 1. Check API switch
   const apiEnabled = await getSetting('api_enabled');
   if (apiEnabled !== 'true') {
-    return new Response(JSON.stringify({ error: 'API is currently disabled by admin' }), { status: 503 });
+    return new Response(JSON.stringify({ error: 'API is currently disabled by admin' }), { 
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // 2. Authenticate user
   const cookie = cookies.get('session');
   if (!cookie) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   const session = await verifySession(cookie.value);
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -30,7 +39,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const user = rows[0];
     
     if (user?.expires_at && new Date(user.expires_at).getTime() < Date.now()) {
-      return new Response(JSON.stringify({ error: 'Account expired' }), { status: 403 });
+      return new Response(JSON.stringify({ error: 'Account expired' }), { 
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const currentDaily = user?.last_call_date === today ? (user?.daily_calls || 0) : 0;
@@ -39,23 +51,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         error: 'Daily request limit reached (100 requests/day). Your quota resets at midnight UTC.' 
       }), { 
         status: 429,
-        headers: { 'Retry-After': '86400' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Retry-After': '86400' 
+        }
       });
     }
   }
 
-  // Increment API usage and update session activity (fire and forget)
+  // Increment API usage and update session activity
   try {
-    const updatePromise = sql`
+    await sql`
       UPDATE users SET 
         api_calls = COALESCE(api_calls, 0) + 1,
         daily_calls = CASE WHEN last_call_date = ${today} THEN COALESCE(daily_calls, 0) + 1 ELSE 1 END,
         last_call_date = ${today}
       WHERE id = ${session.userId}
     `;
-    if (updatePromise && typeof (updatePromise as any).catch === 'function') {
-      (updatePromise as any).catch(() => {});
-    }
 
     if ((session as any).sid) {
       const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
@@ -63,30 +75,40 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const country = decodeURIComponent(request.headers.get('x-vercel-ip-country') || '');
       const location = (city && country) ? `${city}, ${country}` : (city || country || null);
 
-      const sessPromise = location 
-        ? sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip}, location = ${location} WHERE id = ${(session as any).sid}`
-        : sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip} WHERE id = ${(session as any).sid}`;
-      if (sessPromise && typeof (sessPromise as any).catch === 'function') {
-        (sessPromise as any).catch(() => {});
+      if (location) {
+        await sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip}, location = ${location} WHERE id = ${(session as any).sid}`;
+      } else {
+        await sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip} WHERE id = ${(session as any).sid}`;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to update activity metrics:', err);
+  }
 
   // 3. Extract prompt
   let body;
   try {
     body = await request.json();
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   const { prompt, thinking } = body;
   if (!prompt || typeof prompt !== 'string') {
-    return new Response(JSON.stringify({ error: 'Prompt is required and must be a string' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Prompt is required and must be a string' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   if (prompt.length > 50000) {
-    return new Response(JSON.stringify({ error: 'Prompt exceeds maximum length (50000 characters)' }), { status: 413 });
+    return new Response(JSON.stringify({ error: 'Prompt exceeds maximum length (50000 characters)' }), { 
+      status: 413,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // MOCK TEST BYPASS: Avoid token usage during automated testing
@@ -95,7 +117,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       success: true, 
       text: 'This is a mocked AI response for testing.', 
       provider: 'mock' 
-    }), { status: 200 });
+    }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // 4. LLM Fallback Logic
@@ -142,7 +167,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
 
       const cleanText = text ? text.replace(/\0/g, '').replace(/^\uFEFF/, '') : text;
-      return new Response(JSON.stringify({ success: true, text: cleanText, provider: provider.name }), { status: 200 });
+      return new Response(JSON.stringify({ success: true, text: cleanText, provider: provider.name }), { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
 
     } catch (err: any) {
       console.error(`${provider.name} failed:`, err.message);
@@ -150,5 +178,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
   }
 
-  return new Response(JSON.stringify({ error: 'All models failed or no API keys were loaded', details: allErrors }), { status: 500 });
+  return new Response(JSON.stringify({ error: 'All models failed or no API keys were loaded', details: allErrors }), { 
+    status: 500,
+    headers: { 'Content-Type': 'application/json' }
+  });
 };

@@ -22,19 +22,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
     }
 
-    // Check expiration
+    // Check expiration (do NOT delete user so admins can extend them from the dashboard)
     if (user.role !== 'admin' && user.expires_at) {
       const expiresAt = new Date(user.expires_at).getTime();
       if (Date.now() > expiresAt) {
-        // Delete user
-        await sql`DELETE FROM users WHERE id = ${user.id}`;
-        return new Response(JSON.stringify({ error: 'Account expired' }), { status: 401 });
+        return new Response(JSON.stringify({ 
+          error: 'Account expired. Please contact your instructor or administrator to extend your account duration.' 
+        }), { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
 
     const isValid = await verifyPassword(submittedPassword, user.password_hash);
     if (!isValid) {
-      return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
+      return new Response(JSON.stringify({ error: 'Invalid credentials' }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
@@ -47,7 +53,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const { randomUUID } = await import('node:crypto');
     const sessionId = randomUUID();
-    const tokenVersion = user.token_version || 1;
+    let tokenVersion = user.token_version;
+    if (tokenVersion == null) {
+      tokenVersion = 1;
+      await sql`UPDATE users SET token_version = 1 WHERE id = ${user.id}`;
+    }
 
     await sql`
       INSERT INTO user_sessions (id, user_id, ip, location, device)
@@ -59,7 +69,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     cookies.set('session', token, {
       path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: import.meta.env.PROD || process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 // 1 day
     });
 
