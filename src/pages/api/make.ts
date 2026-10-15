@@ -32,8 +32,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
   }
 
-  // Increment API usage (fire and forget)
-  sql`UPDATE users SET api_calls = COALESCE(api_calls, 0) + 1 WHERE id = ${session.userId}`.catch(()=>{});
+  // Increment API usage and update session activity (fire and forget)
+  try {
+    const updatePromise = sql`UPDATE users SET api_calls = COALESCE(api_calls, 0) + 1 WHERE id = ${session.userId}`;
+    if (updatePromise && typeof (updatePromise as any).catch === 'function') {
+      (updatePromise as any).catch(() => {});
+    }
+
+    if ((session as any).sid) {
+      const ip = request.headers.get('x-forwarded-for') || 'Unknown IP';
+      const city = decodeURIComponent(request.headers.get('x-vercel-ip-city') || '');
+      const country = decodeURIComponent(request.headers.get('x-vercel-ip-country') || '');
+      const location = (city && country) ? `${city}, ${country}` : (city || country || null);
+
+      const sessPromise = location 
+        ? sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip}, location = ${location} WHERE id = ${(session as any).sid}`
+        : sql`UPDATE user_sessions SET last_active = CURRENT_TIMESTAMP, ip = ${ip} WHERE id = ${(session as any).sid}`;
+      if (sessPromise && typeof (sessPromise as any).catch === 'function') {
+        (sessPromise as any).catch(() => {});
+      }
+    }
+  } catch {}
 
   // 3. Extract prompt
   let body;
@@ -104,7 +123,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         prompt: `Solve the user's request and verify the answer before responding.\n\nIf the request asks you to create, modify, or provide source code:\n- Return only the final source code.\n- Format the code cleanly and consistently.\n- Use proper indentation, spacing, and line breaks.\n- Follow standard conventions for the language.\n- Do not include comments.\n- Do not include explanations.\n- Do not use Markdown code fences.\n- Do not include any text before or after the code.\n- The output must be directly writable to a source file.\n\nIf the request does not require source code:\n- Return a concise, direct answer.\n- Do not generate code unless it is necessary to answer the request.\n\nUser request:\n${prompt}`,
       });
 
-      return new Response(JSON.stringify({ success: true, text, provider: provider.name }), { status: 200 });
+      const cleanText = text ? text.replace(/\0/g, '').replace(/^\uFEFF/, '') : text;
+      return new Response(JSON.stringify({ success: true, text: cleanText, provider: provider.name }), { status: 200 });
 
     } catch (err: any) {
       console.error(`${provider.name} failed:`, err.message);
