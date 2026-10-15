@@ -19,8 +19,8 @@ const installUrl = `${protocol}//${host}/install`;
 let apiEnabled = false;
 let defaultExp = 1;
 let userExpiresAt = null;
-let users = [];
-let requests = [];
+let users: any[] = [];
+let requests: any[] = [];
 let pendingCount = 0;
 
 if (user?.role === 'admin') {
@@ -414,7 +414,7 @@ if (user?.role === 'admin') {
 
   <script>
     import { customAlert, customConfirm, promptExpiration } from '../lib/ui';
-    import { animate, stagger, inView } from 'motion';
+    import { animate, stagger } from 'motion';
 
     // Page Load Animations
     animate('.tab-btn', { opacity: [0, 1], x: [-20, 0] }, { delay: stagger(0.05), duration: 0.4 });
