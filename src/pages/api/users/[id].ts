@@ -44,6 +44,17 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
 
+  if (action === 'reset_password') {
+    const { newPassword } = body;
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
+      return new Response(JSON.stringify({ error: 'Password must be at least 4 characters long' }), { status: 400 });
+    }
+    const { hashPassword } = await import('../../../lib/auth');
+    const hashed = await hashPassword(newPassword);
+    await sql`UPDATE users SET password_hash = ${hashed}, token_version = token_version + 1 WHERE id = ${userId}`;
+    return new Response(JSON.stringify({ success: true, message: 'Password reset successfully' }), { status: 200 });
+  }
+
   return new Response('Invalid action', { status: 400 });
 };
 

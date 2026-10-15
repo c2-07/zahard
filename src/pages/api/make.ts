@@ -22,19 +22,37 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  // Check expiration again
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Check expiration & rate limiting (100 requests/day for users, admin exempt)
   if (session.role !== 'admin') {
-    const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${session.userId}`;
+    const { rows } = await sql`SELECT expires_at, daily_calls, last_call_date FROM users WHERE id = ${session.userId}`;
     const user = rows[0];
     
     if (user?.expires_at && new Date(user.expires_at).getTime() < Date.now()) {
       return new Response(JSON.stringify({ error: 'Account expired' }), { status: 403 });
     }
+
+    const currentDaily = user?.last_call_date === today ? (user?.daily_calls || 0) : 0;
+    if (currentDaily >= 100) {
+      return new Response(JSON.stringify({ 
+        error: 'Daily request limit reached (100 requests/day). Your quota resets at midnight UTC.' 
+      }), { 
+        status: 429,
+        headers: { 'Retry-After': '86400' }
+      });
+    }
   }
 
   // Increment API usage and update session activity (fire and forget)
   try {
-    const updatePromise = sql`UPDATE users SET api_calls = COALESCE(api_calls, 0) + 1 WHERE id = ${session.userId}`;
+    const updatePromise = sql`
+      UPDATE users SET 
+        api_calls = COALESCE(api_calls, 0) + 1,
+        daily_calls = CASE WHEN last_call_date = ${today} THEN COALESCE(daily_calls, 0) + 1 ELSE 1 END,
+        last_call_date = ${today}
+      WHERE id = ${session.userId}
+    `;
     if (updatePromise && typeof (updatePromise as any).catch === 'function') {
       (updatePromise as any).catch(() => {});
     }

@@ -14,6 +14,8 @@ export async function initSchema() {
 
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;`.catch(()=>console.log('token_version exists'));
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS api_calls INT DEFAULT 0;`.catch(()=>console.log('api_calls exists'));
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_calls INT DEFAULT 0;`.catch(()=>console.log('daily_calls exists'));
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_call_date VARCHAR(10);`.catch(()=>console.log('last_call_date exists'));
 
   await sql`
     CREATE TABLE IF NOT EXISTS user_sessions (

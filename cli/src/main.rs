@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::process;
 
@@ -189,29 +189,85 @@ fn cmd_uninstall() {
     println!("Uninstalled successfully. Note: To fully remove the binary, delete the executable file from your PATH.");
 }
 
+fn cmd_version() {
+    println!("za v{}", env!("CARGO_PKG_VERSION"));
+}
+
+fn cmd_update() {
+    println!("Updating 'za' CLI to the latest version...");
+    let install_url = env::var("ZA_INSTALL_URL").unwrap_or_else(|_| "https://zahard.vercel.app/install".to_string());
+
+    #[cfg(windows)]
+    {
+        let ps_cmd = format!("irm {} | iex", install_url);
+        let status = process::Command::new("powershell")
+            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &ps_cmd])
+            .status();
+        match status {
+            Ok(s) if s.success() => println!("Update completed successfully!"),
+            _ => {
+                eprintln!("Automatic update failed. Run this command manually in PowerShell:");
+                eprintln!("  irm {} | iex", install_url);
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let sh_cmd = format!("curl -fsSL {} | bash", install_url);
+        let status = process::Command::new("sh")
+            .arg("-c")
+            .arg(&sh_cmd)
+            .status();
+        match status {
+            Ok(s) if s.success() => println!("Update completed successfully!"),
+            _ => {
+                eprintln!("Automatic update failed. Run this command manually in your terminal:");
+                eprintln!("  curl -fsSL {} | bash", install_url);
+            }
+        }
+    }
+}
+
+pub fn build_piped_prompt(user_prompt: &str, piped_input: &str) -> Option<String> {
+    let clean_prompt = trim_outer_quotes(user_prompt.trim());
+    let clean_piped = piped_input.trim();
+
+    match (!clean_prompt.is_empty(), !clean_piped.is_empty()) {
+        (true, true) => Some(format!("{}\n\n[Piped Input / Code]:\n```\n{}\n```", clean_prompt, clean_piped)),
+        (true, false) => Some(clean_prompt.to_string()),
+        (false, true) => Some(clean_piped.to_string()),
+        (false, false) => None,
+    }
+}
+
 fn print_usage() {
-    println!("za - minimal AI assistant & code generator");
+    println!("za - minimal AI assistant & code generator (v{})", env!("CARGO_PKG_VERSION"));
     println!();
     println!("Usage:");
     println!("  za [OPTIONS] <PROMPT...>");
     println!("  za <COMMAND>");
+    println!("  cat <FILE> | za [OPTIONS] [PROMPT]");
     println!();
     println!("Commands:");
-    println!("  login      (-l)    Log in to your account");
-    println!("  logout     (-lo)   Log out from your account");
-    println!("  status     (-s,-w) Check session status");
-    println!("  uninstall  (-u)    Remove CLI data from system");
-    println!("  help       (-h)    Show this help message");
+    println!("  login      (-l)       Log in to your account");
+    println!("  logout     (-lo)      Log out from your account");
+    println!("  status     (-s,-w)    Check session status");
+    println!("  update                Update CLI to latest version");
+    println!("  version    (-v)       Show current CLI version");
+    println!("  uninstall  (-u)       Remove CLI data from system");
+    println!("  help       (-h)       Show this help message");
     println!();
     println!("Options:");
-    println!("  -o, --output <FILE> Save response directly to file (clean UTF-8, no null errors)");
-    println!("  -t                  Prioritize reasoning model");
+    println!("  -o, --output <FILE>   Save clean code directly to file (No null errors)");
+    println!("  -t, --thinking        Prioritize reasoning model");
+    println!("  -v, --version         Show CLI version");
     println!();
     println!("Examples:");
     println!("  za Explain binary search in simple terms");
     println!("  za \"Explain binary search\"");
     println!("  za -o hello.c write hello world in c");
-    println!("  za -o bubble.c \"write bubble sort in c\"");
+    println!("  cat solution.c | za \"find the memory leak\"");
+    println!("  gcc main.c 2>&1 | za \"how to fix this compilation error\"");
     println!("  za -t \"solve traveling salesperson problem\"");
 }
 
@@ -294,6 +350,10 @@ fn cmd_make(prompt: &str, thinking: bool, output_file: Option<&str>) {
     });
 
     if status != 200 {
+        if status == 429 {
+            eprintln!("Rate limit reached: {}", resp_body.error.unwrap_or_else(|| "Daily limit of 100 requests reached. Quota resets at midnight UTC.".to_string()));
+            process::exit(1);
+        }
         eprintln!("Request failed (HTTP Status: {})", status);
         if let Some(err) = resp_body.error {
             eprintln!("{}", err);
@@ -330,35 +390,53 @@ fn cmd_make(prompt: &str, thinking: bool, output_file: Option<&str>) {
 
 fn main() {
     let raw_args: Vec<String> = env::args().collect();
-    if raw_args.len() < 2 {
+
+    // Check for piped stdin (e.g., cat file.c | za "prompt" or cat file.c | za)
+    let mut piped_input = String::new();
+    if !io::stdin().is_terminal() {
+        let _ = io::stdin().read_to_string(&mut piped_input);
+    }
+    let has_pipe = !piped_input.trim().is_empty();
+
+    if raw_args.len() < 2 && !has_pipe {
         print_usage();
         return;
     }
 
     // Check if first argument is a standalone command
-    let first = raw_args[1].as_str();
-    match first {
-        "help" | "--help" | "-h" => {
-            print_usage();
-            return;
+    if raw_args.len() >= 2 {
+        let first = raw_args[1].as_str();
+        match first {
+            "help" | "--help" | "-h" => {
+                print_usage();
+                return;
+            }
+            "version" | "--version" | "-v" => {
+                cmd_version();
+                return;
+            }
+            "update" => {
+                cmd_update();
+                return;
+            }
+            "uninstall" | "-u" | "--uninstall" => {
+                cmd_uninstall();
+                return;
+            }
+            "login" | "-l" | "--login" => {
+                cmd_login();
+                return;
+            }
+            "logout" | "-lo" | "--logout" => {
+                cmd_logout();
+                return;
+            }
+            "whoami" | "status" | "-s" | "--status" | "-w" | "--whoami" => {
+                cmd_whoami();
+                return;
+            }
+            _ => {}
         }
-        "uninstall" | "-u" | "--uninstall" => {
-            cmd_uninstall();
-            return;
-        }
-        "login" | "-l" | "--login" => {
-            cmd_login();
-            return;
-        }
-        "logout" | "-lo" | "--logout" => {
-            cmd_logout();
-            return;
-        }
-        "whoami" | "status" | "-s" | "--status" | "-w" | "--whoami" => {
-            cmd_whoami();
-            return;
-        }
-        _ => {}
     }
 
     let mut thinking = false;
@@ -371,6 +449,9 @@ fn main() {
         if arg == "-t" || arg == "--thinking" {
             thinking = true;
             idx += 1;
+        } else if arg == "-v" || arg == "--version" {
+            cmd_version();
+            return;
         } else if arg == "-o" || arg == "--output" {
             idx += 1;
             if idx < raw_args.len() {
@@ -393,15 +474,16 @@ fn main() {
     }
 
     let joined_prompt = prompt_tokens.join(" ");
-    let prompt = trim_outer_quotes(&joined_prompt).to_string();
+    let final_prompt = match build_piped_prompt(&joined_prompt, &piped_input) {
+        Some(p) => p,
+        None => {
+            eprintln!("Error: Prompt cannot be empty.");
+            print_usage();
+            process::exit(1);
+        }
+    };
 
-    if prompt.is_empty() {
-        eprintln!("Error: Prompt cannot be empty.");
-        print_usage();
-        process::exit(1);
-    }
-
-    cmd_make(&prompt, thinking, output_file.as_deref());
+    cmd_make(&final_prompt, thinking, output_file.as_deref());
 }
 
 #[cfg(test)]
@@ -446,5 +528,33 @@ mod tests {
         let text = "int\u{200B} a\u{00A0}=\u{200C} 5;";
         let clean = sanitize_output(text, false);
         assert_eq!(clean, "int a = 5;");
+    }
+
+    #[test]
+    fn test_build_piped_prompt_combined() {
+        let prompt = build_piped_prompt("find bug", "int main() { return 0; }");
+        assert!(prompt.is_some());
+        let res = prompt.unwrap();
+        assert!(res.starts_with("find bug"));
+        assert!(res.contains("int main() { return 0; }"));
+        assert!(res.contains("[Piped Input / Code]:"));
+    }
+
+    #[test]
+    fn test_build_piped_prompt_pipe_only() {
+        let prompt = build_piped_prompt("", "int main() { return 0; }");
+        assert_eq!(prompt.unwrap(), "int main() { return 0; }");
+    }
+
+    #[test]
+    fn test_build_piped_prompt_user_only() {
+        let prompt = build_piped_prompt("what is polymorphism?", "");
+        assert_eq!(prompt.unwrap(), "what is polymorphism?");
+    }
+
+    #[test]
+    fn test_build_piped_prompt_empty() {
+        let prompt = build_piped_prompt("  ", "");
+        assert!(prompt.is_none());
     }
 }
