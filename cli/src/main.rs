@@ -16,7 +16,6 @@ struct LoginRequest {
 struct LoginResponse {
     success: Option<bool>,
     error: Option<String>,
-    username: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -50,8 +49,12 @@ fn get_cookie_file() -> PathBuf {
     get_config_dir().join("cookie")
 }
 
-fn get_user_file() -> PathBuf {
-    get_config_dir().join("user")
+// Clean up any legacy user identity file to protect privacy on shared/lab PCs
+fn clean_legacy_user_file() {
+    let user_file = get_config_dir().join("user");
+    if user_file.exists() {
+        let _ = fs::remove_file(user_file);
+    }
 }
 
 fn get_api_url() -> String {
@@ -69,18 +72,10 @@ fn is_logged_in() -> bool {
     false
 }
 
-fn get_username() -> String {
-    let user_file = get_user_file();
-    if let Ok(content) = fs::read_to_string(user_file) {
-        return content.trim().to_string();
-    }
-    "unknown".to_string()
-}
-
 fn cmd_login() {
+    clean_legacy_user_file();
     if is_logged_in() {
-        let user = get_username();
-        print!("You are already logged in as '{}'. Logout and re-login? [y/N]: ", user);
+        print!("Already authenticated. Logout and re-login? [y/N]: ");
         io::stdout().flush().unwrap();
         let mut confirm = String::new();
         io::stdin().read_line(&mut confirm).unwrap();
@@ -88,7 +83,7 @@ fn cmd_login() {
         if confirm.starts_with('y') {
             cmd_logout();
         } else {
-            println!("Staying logged in as '{}'.", user);
+            println!("Remaining authenticated.");
             return;
         }
     }
@@ -107,7 +102,7 @@ fn cmd_login() {
 
     let api_url = format!("{}/auth/login", get_api_url());
     let req_body = LoginRequest {
-        username: username.clone(),
+        username,
         password,
     };
 
@@ -126,7 +121,6 @@ fn cmd_login() {
     let resp_body: LoginResponse = resp.into_json().unwrap_or_else(|_| LoginResponse {
         success: Some(false),
         error: Some("Failed to parse response".to_string()),
-        username: None,
     });
 
     if status != 200 || resp_body.success != Some(true) {
@@ -135,26 +129,34 @@ fn cmd_login() {
     }
 
     if let Some(cookie) = set_cookie {
-        fs::write(get_cookie_file(), cookie).unwrap();
+        let cookie_path = get_cookie_file();
+        fs::write(&cookie_path, cookie).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = fs::metadata(&cookie_path) {
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o600);
+                let _ = fs::set_permissions(&cookie_path, perms);
+            }
+        }
     } else {
         eprintln!("Login failed or no cookie returned from server.");
         process::exit(1);
     }
 
-    let saved_username = resp_body.username.unwrap_or(username);
-    fs::write(get_user_file(), &saved_username).unwrap();
-
-    println!("Logged in successfully as '{}'.", saved_username);
+    clean_legacy_user_file();
+    println!("Logged in successfully.");
 }
 
 fn cmd_logout() {
+    clean_legacy_user_file();
     if !is_logged_in() {
         println!("You are not logged in.");
         return;
     }
 
-    let user = get_username();
-    println!("Logging out from '{}'...", user);
+    println!("Logging out...");
 
     let api_url = format!("{}/auth/logout", get_api_url());
     let cookie_val = fs::read_to_string(get_cookie_file()).unwrap_or_default();
@@ -165,18 +167,19 @@ fn cmd_logout() {
         .call();
 
     let _ = fs::remove_file(get_cookie_file());
-    let _ = fs::remove_file(get_user_file());
+    clean_legacy_user_file();
     
     println!("Logged out successfully.");
 }
 
 fn cmd_whoami() {
+    clean_legacy_user_file();
     if !is_logged_in() {
         println!("Not logged in.");
         println!("Run 'za login' to log in.");
         return;
     }
-    println!("Logged in as: {}", get_username());
+    println!("Status: Active (Authenticated)");
 }
 
 fn cmd_uninstall() {
@@ -187,20 +190,77 @@ fn cmd_uninstall() {
 }
 
 fn print_usage() {
-    println!("Usage: za [OPTIONS] <PROMPT>");
+    println!("za - minimal AI assistant & code generator");
     println!();
-    println!("Commands (Shortcuts):");
-    println!("  login     (-l)      Log in to your account");
-    println!("  logout    (-lo)     Log out from your account");
-    println!("  whoami    (-w, -s)  Show current logged-in account info");
-    println!("  uninstall (-u)      Remove CLI data from your system");
-    println!("  help      (-h)      Show this usage guide");
+    println!("Usage:");
+    println!("  za [OPTIONS] <PROMPT...>");
+    println!("  za <COMMAND>");
+    println!();
+    println!("Commands:");
+    println!("  login      (-l)    Log in to your account");
+    println!("  logout     (-lo)   Log out from your account");
+    println!("  status     (-s,-w) Check session status");
+    println!("  uninstall  (-u)    Remove CLI data from system");
+    println!("  help       (-h)    Show this help message");
     println!();
     println!("Options:");
-    println!("  -t                  Prioritize the Gemini reasoning model");
+    println!("  -o, --output <FILE> Save response directly to file (clean UTF-8, no null errors)");
+    println!("  -t                  Prioritize reasoning model");
+    println!();
+    println!("Examples:");
+    println!("  za Explain binary search in simple terms");
+    println!("  za \"Explain binary search\"");
+    println!("  za -o hello.c write hello world in c");
+    println!("  za -o bubble.c \"write bubble sort in c\"");
+    println!("  za -t \"solve traveling salesperson problem\"");
 }
 
-fn cmd_make(prompt: &str, thinking: bool) {
+pub fn sanitize_output(text: &str, is_file_output: bool) -> String {
+    // 1. Remove literal null bytes (\0)
+    let mut clean = text.replace('\0', "");
+
+    // 2. Strip UTF-8 BOM (\u{FEFF})
+    if clean.starts_with('\u{FEFF}') {
+        clean = clean.trim_start_matches('\u{FEFF}').to_string();
+    }
+
+    // 3. Remove zero-width characters that cause compiler errors
+    clean = clean.replace('\u{200B}', "") // zero-width space
+                 .replace('\u{200C}', "") // zero-width non-joiner
+                 .replace('\u{200D}', ""); // zero-width joiner
+
+    // 4. Normalize non-breaking spaces (\u{00A0}) to standard spaces
+    clean = clean.replace('\u{00A0}', " ");
+
+    // 5. If writing directly to a source file, unwrap Markdown code fences
+    if is_file_output {
+        let trimmed = clean.trim();
+        if trimmed.starts_with("```") {
+            if let Some(first_nl) = trimmed.find('\n') {
+                let after_open = &trimmed[first_nl + 1..];
+                if let Some(last_fence) = after_open.rfind("```") {
+                    return after_open[..last_fence].trim_end().to_string();
+                }
+            }
+        }
+    }
+
+    clean
+}
+
+pub fn trim_outer_quotes(s: &str) -> &str {
+    let trimmed = s.trim();
+    if (trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2)
+        || (trimmed.starts_with('\'') && trimmed.ends_with('\'') && trimmed.len() >= 2)
+    {
+        &trimmed[1..trimmed.len() - 1]
+    } else {
+        trimmed
+    }
+}
+
+fn cmd_make(prompt: &str, thinking: bool, output_file: Option<&str>) {
+    clean_legacy_user_file();
     if !is_logged_in() {
         eprintln!("Error: Not logged in.");
         eprintln!("Please run: za login");
@@ -247,7 +307,21 @@ fn cmd_make(prompt: &str, thinking: bool) {
     }
 
     if let Some(text) = resp_body.text {
-        println!("{}", text);
+        if let Some(file_path) = output_file {
+            let sanitized = sanitize_output(&text, true);
+            match fs::write(file_path, sanitized.as_bytes()) {
+                Ok(_) => {
+                    println!("Code successfully saved to '{}'.", file_path);
+                }
+                Err(e) => {
+                    eprintln!("Error saving code to '{}': {}", file_path, e);
+                    process::exit(1);
+                }
+            }
+        } else {
+            let sanitized = sanitize_output(&text, false);
+            println!("{}", sanitized);
+        }
     } else if let Some(err) = resp_body.error {
         eprintln!("{}", err);
         process::exit(1);
@@ -255,15 +329,15 @@ fn cmd_make(prompt: &str, thinking: bool) {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
+    let raw_args: Vec<String> = env::args().collect();
+    if raw_args.len() < 2 {
         print_usage();
         return;
     }
 
-    let cmd = args[1].as_str();
-
-    match cmd {
+    // Check if first argument is a standalone command
+    let first = raw_args[1].as_str();
+    match first {
         "help" | "--help" | "-h" => {
             print_usage();
             return;
@@ -288,19 +362,38 @@ fn main() {
     }
 
     let mut thinking = false;
-    let mut prompt_parts = Vec::new();
+    let mut output_file: Option<String> = None;
+    let mut prompt_tokens = Vec::new();
 
-    let mut start_idx = 1;
-    if args[1] == "-t" {
-        thinking = true;
-        start_idx = 2;
+    let mut idx = 1;
+    while idx < raw_args.len() {
+        let arg = &raw_args[idx];
+        if arg == "-t" || arg == "--thinking" {
+            thinking = true;
+            idx += 1;
+        } else if arg == "-o" || arg == "--output" {
+            idx += 1;
+            if idx < raw_args.len() {
+                output_file = Some(raw_args[idx].clone());
+                idx += 1;
+            } else {
+                eprintln!("Error: -o / --output requires a file path argument.");
+                process::exit(1);
+            }
+        } else if let Some(val) = arg.strip_prefix("-o=") {
+            output_file = Some(val.to_string());
+            idx += 1;
+        } else if let Some(val) = arg.strip_prefix("--output=") {
+            output_file = Some(val.to_string());
+            idx += 1;
+        } else {
+            prompt_tokens.push(arg.as_str());
+            idx += 1;
+        }
     }
 
-    for arg in &args[start_idx..] {
-        prompt_parts.push(arg.as_str());
-    }
-
-    let prompt = prompt_parts.join(" ").trim().to_string();
+    let joined_prompt = prompt_tokens.join(" ");
+    let prompt = trim_outer_quotes(&joined_prompt).to_string();
 
     if prompt.is_empty() {
         eprintln!("Error: Prompt cannot be empty.");
@@ -308,7 +401,7 @@ fn main() {
         process::exit(1);
     }
 
-    cmd_make(&prompt, thinking);
+    cmd_make(&prompt, thinking, output_file.as_deref());
 }
 
 #[cfg(test)]
@@ -322,8 +415,36 @@ mod tests {
         
         let cookie_file = get_cookie_file();
         assert!(cookie_file.ends_with("cookie"));
-        
-        let user_file = get_user_file();
-        assert!(user_file.ends_with("user"));
+    }
+
+    #[test]
+    fn test_trim_outer_quotes() {
+        assert_eq!(trim_outer_quotes("\"hello world\""), "hello world");
+        assert_eq!(trim_outer_quotes("'hello world'"), "hello world");
+        assert_eq!(trim_outer_quotes("hello world"), "hello world");
+        assert_eq!(trim_outer_quotes("  \"quoted\"  "), "quoted");
+    }
+
+    #[test]
+    fn test_sanitize_output_null_and_bom() {
+        let dirty = "\u{FEFF}#include <stdio.h>\0\nint main() {\0 return 0; }";
+        let clean = sanitize_output(dirty, false);
+        assert!(!clean.contains('\0'));
+        assert!(!clean.contains('\u{FEFF}'));
+        assert!(clean.contains("#include <stdio.h>"));
+    }
+
+    #[test]
+    fn test_sanitize_output_unwraps_code_fence() {
+        let markdown = "```c\n#include <stdio.h>\nint main() { return 0; }\n```";
+        let clean = sanitize_output(markdown, true);
+        assert_eq!(clean, "#include <stdio.h>\nint main() { return 0; }");
+    }
+
+    #[test]
+    fn test_sanitize_output_zero_width() {
+        let text = "int\u{200B} a\u{00A0}=\u{200C} 5;";
+        let clean = sanitize_output(text, false);
+        assert_eq!(clean, "int a = 5;");
     }
 }
