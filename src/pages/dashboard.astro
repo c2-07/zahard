@@ -23,6 +23,42 @@ let users: any[] = [];
 let requests: any[] = [];
 let pendingCount = 0;
 
+function formatRemainingTime(expiresAt: string | Date | null | undefined): string {
+  if (!expiresAt) return 'Never';
+  const target = new Date(expiresAt).getTime();
+  if (isNaN(target)) return 'Never';
+  const now = Date.now();
+  const diffMs = target - now;
+
+  if (diffMs <= 0) return 'Expired';
+
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffMonths >= 1) {
+    const remDays = diffDays % 30;
+    if (diffMonths === 1) {
+      return remDays > 0 ? `1 month, ${remDays}d` : `1 month`;
+    }
+    return remDays > 0 ? `${diffMonths} months, ${remDays}d` : `${diffMonths} months`;
+  }
+  if (diffDays >= 2) {
+    return `${diffDays} days`;
+  }
+  if (diffDays === 1) {
+    const remHours = diffHours % 24;
+    return remHours > 0 ? `1 day, ${remHours}h` : `1 day`;
+  }
+  if (diffHours >= 1) {
+    const remMins = diffMins % 60;
+    return remMins > 0 ? `${diffHours}h, ${remMins}m` : `${diffHours} hours`;
+  }
+  return `${Math.max(1, diffMins)} mins`;
+}
+
 if (user?.role === 'admin') {
   if (user.userId === 'guest') {
     apiEnabled = true;
@@ -109,22 +145,22 @@ if (user?.role === 'admin') {
 ---
 <DashboardLayout title="Dashboard">
   <div class="flex flex-col md:flex-row gap-8 flex-1">
-    <!-- Navigation Tabs (Sticky on mobile so they never hide under header) -->
-    <aside class="md:w-56 shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto scrollbar-hide sticky top-[73px] z-20 bg-[var(--black)]/95 backdrop-blur-md pt-1 pb-3 -mx-6 px-6 md:static md:bg-transparent md:p-0 md:top-auto border-b md:border-b-0 border-[var(--border)] md:border-transparent">
-      <button class="tab-btn active w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all whitespace-nowrap" data-target="overview">
+    <!-- Navigation Tabs (Sticky sidebar that docks cleanly below header on desktop & mobile) -->
+    <aside class="w-full md:w-56 shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible scrollbar-hide sticky top-[73px] md:top-24 md:self-start z-30 bg-[#000000] md:bg-transparent pt-1 pb-3 -mx-6 px-6 md:p-0 md:m-0 border-b md:border-b-0 border-[var(--border)] md:border-transparent">
+      <button class="tab-btn active shrink-0 md:shrink md:w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all whitespace-nowrap" data-target="overview">
         Overview
       </button>
       
       {user.role === 'admin' && (
         <>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="users">
+          <button class="tab-btn shrink-0 md:shrink md:w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="users">
             Users
           </button>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="requests">
+          <button class="tab-btn shrink-0 md:shrink md:w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all flex justify-between items-center opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="requests">
             Requests
             <span id="pending-count-badge" class={`bg-[var(--paper)] text-[var(--black)] px-1.5 py-0.5 ml-2 font-mono ${pendingCount > 0 ? '' : 'hidden'}`}>{pendingCount}</span>
           </button>
-          <button class="tab-btn w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="settings">
+          <button class="tab-btn shrink-0 md:shrink md:w-full text-left px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-all opacity-60 hover:opacity-100 hover:bg-[rgba(242,242,242,0.05)] whitespace-nowrap" data-target="settings">
             Settings
           </button>
         </>
@@ -141,10 +177,17 @@ if (user?.role === 'admin') {
           <div class="text-sm opacity-60">Your workspace is ready.</div>
         </div>
 
-        {user.role === 'user' && userExpiresAt && (
-          <div class="text-sm p-4 mb-6 bg-[rgba(242,242,242,0.05)] border border-[var(--border)]">
-            <span class="opacity-60 uppercase tracking-widest text-xs block mb-1">Access Expires At:</span>
-            <span class="font-mono">{new Date(userExpiresAt).toLocaleString()}</span>
+        {user.role === 'user' && (
+          <div class="text-sm p-4 mb-6 bg-[rgba(242,242,242,0.05)] border border-[var(--border)] flex items-center justify-between">
+            <div>
+              <span class="opacity-60 uppercase tracking-widest text-[10px] block mb-0.5">Account Status</span>
+              <span class="font-mono text-sm font-semibold text-[var(--paper)]">
+                {userExpiresAt ? `Access remaining: ${formatRemainingTime(userExpiresAt)}` : 'Permanent Access'}
+              </span>
+            </div>
+            <span class={`inline-block px-2.5 py-1 text-[10px] uppercase tracking-wider font-mono font-semibold ${formatRemainingTime(userExpiresAt) === 'Expired' ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}`}>
+              {formatRemainingTime(userExpiresAt) === 'Expired' ? 'Expired' : 'Active'}
+            </span>
           </div>
         )}
 
@@ -188,6 +231,149 @@ if (user?.role === 'admin') {
             </ol>
           </div>
         </div>
+
+        <!-- PIPING WORKFLOWS -->
+        <div class="card p-6 mb-8">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="font-mono text-emerald-400 text-lg font-bold">|</span>
+            <h2 class="text-xl font-bold uppercase tracking-wider">How to Pipe into `za`</h2>
+          </div>
+          <p class="mb-6 text-sm opacity-80">
+            Piping lets you pass code files, compiler errors, or git diffs directly into the CLI without manual copy-pasting:
+          </p>
+
+          <div class="space-y-4">
+            <!-- 1. Debug code -->
+            <div class="border border-[var(--border)] bg-[#000000] p-4 rounded-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-[var(--paper)]">1. Debug Source Code</span>
+                <button type="button" class="btn-ghost !px-2.5 !py-1 !text-[10px] copy-btn" data-command='cat solution.c | za "find memory leaks or bugs"'>Copy</button>
+              </div>
+              <div class="font-mono text-xs text-[var(--paper)] opacity-90 overflow-x-auto whitespace-pre scrollbar-hide">
+                <code>cat solution.c | za "find memory leaks or bugs"</code>
+              </div>
+              <div class="text-[11px] opacity-50 mt-1">Sends the entire file along with your prompt as context.</div>
+            </div>
+
+            <!-- 2. Fix compiler errors -->
+            <div class="border border-[var(--border)] bg-[#000000] p-4 rounded-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-[var(--paper)]">2. Fix Compiler Warnings & Errors</span>
+                <button type="button" class="btn-ghost !px-2.5 !py-1 !text-[10px] copy-btn" data-command='gcc main.c 2>&1 | za "explain this error and how to fix it"'>Copy</button>
+              </div>
+              <div class="font-mono text-xs text-[var(--paper)] opacity-90 overflow-x-auto whitespace-pre scrollbar-hide">
+                <code>gcc main.c 2>&1 | za "explain this error and how to fix it"</code>
+              </div>
+              <div class="text-[11px] opacity-50 mt-1">Pipes stderr compiler logs straight into the AI for an immediate diagnosis.</div>
+            </div>
+
+            <!-- 3. Fix and save directly to clean file -->
+            <div class="border border-[var(--border)] bg-[#000000] p-4 rounded-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-[var(--paper)]">3. Fix & Save Directly to Clean File (-o)</span>
+                <button type="button" class="btn-ghost !px-2.5 !py-1 !text-[10px] copy-btn" data-command='cat buggy.c | za -o fixed.c "fix all syntax and logic errors"'>Copy</button>
+              </div>
+              <div class="font-mono text-xs text-[var(--paper)] opacity-90 overflow-x-auto whitespace-pre scrollbar-hide">
+                <code>cat buggy.c | za -o fixed.c "fix all syntax and logic errors"</code>
+              </div>
+              <div class="text-[11px] opacity-50 mt-1">Generates fixed code and saves it as pure UTF-8 directly to disk.</div>
+            </div>
+
+            <!-- 4. Review git diffs -->
+            <div class="border border-[var(--border)] bg-[#000000] p-4 rounded-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-[var(--paper)]">4. Review Git Diff & Generate Commit Msg</span>
+                <button type="button" class="btn-ghost !px-2.5 !py-1 !text-[10px] copy-btn" data-command='git diff | za "write a concise commit message for these changes"'>Copy</button>
+              </div>
+              <div class="font-mono text-xs text-[var(--paper)] opacity-90 overflow-x-auto whitespace-pre scrollbar-hide">
+                <code>git diff | za "write a concise commit message for these changes"</code>
+              </div>
+              <div class="text-[11px] opacity-50 mt-1">Analyzes unstaged changes and crafts a clean conventional commit summary.</div>
+            </div>
+
+            <!-- 5. Prompt file pipe -->
+            <div class="border border-[var(--border)] bg-[#000000] p-4 rounded-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-[var(--paper)]">5. Pipe Prompt File</span>
+                <button type="button" class="btn-ghost !px-2.5 !py-1 !text-[10px] copy-btn" data-command="cat assignment.txt | za">Copy</button>
+              </div>
+              <div class="font-mono text-xs text-[var(--paper)] opacity-90 overflow-x-auto whitespace-pre scrollbar-hide">
+                <code>cat assignment.txt | za</code>
+              </div>
+              <div class="text-[11px] opacity-50 mt-1">Executes the file contents directly as the prompt.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TROUBLESHOOTING & FAQS -->
+        <div class="card p-6 mb-8">
+          <h2 class="text-xl font-bold uppercase tracking-wider mb-2">Troubleshooting & FAQs</h2>
+          <p class="mb-6 text-sm opacity-80">Quick fixes for common errors in lab and terminal environments:</p>
+
+          <div class="space-y-4">
+            <!-- FAQ 1: command not found -->
+            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+              <div class="flex items-center gap-2 mb-2 font-mono text-xs font-bold text-red-400">
+                <span class="text-red-500 font-bold">✕</span> Error: command not found: za
+              </div>
+              <div class="text-xs opacity-80 space-y-2">
+                <div>Your current shell session has not loaded the new PATH entry yet. Run:</div>
+                <div class="font-mono text-[11px] bg-[#000000] p-2.5 border border-[var(--border)] text-[var(--paper)] space-y-1">
+                  <div><span class="text-blue-400 font-semibold">Linux:</span> source ~/.bashrc</div>
+                  <div><span class="text-blue-400 font-semibold">macOS:</span> source ~/.zshrc</div>
+                  <div><span class="text-blue-400 font-semibold">Windows:</span> Restart PowerShell (or close and reopen terminal)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ 2: null character / stray \377 -->
+            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+              <div class="flex items-center gap-2 mb-2 font-mono text-xs font-bold text-amber-400">
+                <span class="text-amber-500 font-bold">⚠</span> GCC Warning: null character(s) ignored or stray '\377'
+              </div>
+              <div class="text-xs opacity-80 space-y-2">
+                <div>In Windows PowerShell, shell redirection (<code class="font-mono bg-[rgba(242,242,242,0.1)] px-1">&gt; file.c</code>) encodes files in UTF-16 with null bytes. Always use the built-in <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1 text-[var(--paper)]">-o</code> flag instead:</div>
+                <div class="font-mono text-[11px] bg-[#000000] p-2.5 border border-[var(--border)] text-[var(--paper)]">
+                  za -o hello.c "write hello world in c"
+                </div>
+                <div class="text-[11px] opacity-60">This bypasses shell redirection and writes pure, clean UTF-8 directly to disk.</div>
+              </div>
+            </div>
+
+            <!-- FAQ 3: Rate limit 100/day -->
+            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+              <div class="flex items-center gap-2 mb-2 font-mono text-xs font-bold text-[var(--paper)]">
+                <span class="text-emerald-400 font-bold">ℹ</span> Rate limit reached (100 requests/day)
+              </div>
+              <div class="text-xs opacity-80 space-y-1">
+                <div>Student accounts have a fair-use quota of <strong>100 requests per day</strong> to prevent runaway loops. Quotas reset automatically every night at <strong>midnight UTC</strong>.</div>
+              </div>
+            </div>
+
+            <!-- FAQ 4: Account expired -->
+            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+              <div class="flex items-center gap-2 mb-2 font-mono text-xs font-bold text-red-400">
+                <span class="text-red-500 font-bold">✕</span> Error: Account expired or Unauthorized
+              </div>
+              <div class="text-xs opacity-80 space-y-1">
+                <div>Your temporary lab access period has concluded. If your lab session is still ongoing, contact your lab administrator or instructor to extend your account duration.</div>
+              </div>
+            </div>
+
+            <!-- FAQ 5: Reasoning mode -->
+            <div class="border border-[var(--border)] p-4 bg-[#050505] rounded-sm">
+              <div class="flex items-center gap-2 mb-2 font-mono text-xs font-bold text-[var(--paper)]">
+                <span class="text-blue-400 font-bold">⚡</span> How to enable Deep Reasoning mode?
+              </div>
+              <div class="text-xs opacity-80 space-y-1">
+                <div>Add the <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1 text-[var(--paper)]">-t</code> or <code class="font-mono bg-[rgba(242,242,242,0.1)] px-1 text-[var(--paper)]">--thinking</code> flag to route your query through high-depth reasoning models:</div>
+                <div class="font-mono text-[11px] bg-[#000000] p-2.5 border border-[var(--border)] text-[var(--paper)] mt-1">
+                  za -t "Explain how graph cycle detection works using Tarjan's algorithm"
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {user.role === 'admin' && (
@@ -224,7 +410,7 @@ if (user?.role === 'admin') {
                   <tr class="border-b border-[var(--border)] bg-[rgba(242,242,242,0.05)]">
                     <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold whitespace-nowrap min-w-[140px]">User</th>
                     <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden sm:table-cell whitespace-nowrap w-24">Role</th>
-                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell whitespace-nowrap min-w-[180px]">Expires At</th>
+                    <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold hidden md:table-cell whitespace-nowrap min-w-[140px]">Expires In</th>
                     <th class="p-3 sm:p-4 text-xs uppercase tracking-widest opacity-60 font-semibold text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
@@ -243,8 +429,14 @@ if (user?.role === 'admin') {
                             {u.role}
                           </span>
                         </td>
-                        <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono opacity-80 whitespace-nowrap">
-                         {u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}
+                        <td class="p-3 sm:p-4 text-xs sm:text-sm font-mono whitespace-nowrap">
+                          {formatRemainingTime(u.expires_at) === 'Expired' ? (
+                            <span class="text-red-400 font-semibold">Expired</span>
+                          ) : formatRemainingTime(u.expires_at) === 'Never' ? (
+                            <span class="opacity-50">Never</span>
+                          ) : (
+                            <span class="text-[var(--paper)]">{formatRemainingTime(u.expires_at)}</span>
+                          )}
                         </td>
                         <td class="p-4 text-right space-x-2 whitespace-nowrap">
                          <button class="btn-ghost !text-xs logout-all-btn" data-id={u.id}>Logout Everywhere</button>
