@@ -129,7 +129,18 @@ set -e
 # --- Configuration ---
 # Update this to your actual GitHub repository (e.g., "gourav/zahard")
 GITHUB_REPO="c2-07/zahard"
+
+# Ensure HOME is resolved
+if [ -z "$HOME" ]; then
+    HOME="$(getent passwd "$(id -un 2>/dev/null || whoami)" 2>/dev/null | cut -d: -f6)"
+fi
+[ -z "$HOME" ] && HOME="$PWD"
+
 INSTALL_DIR="$HOME/.local/bin"
+mkdir -p "$INSTALL_DIR" 2>/dev/null || {
+    echo "Error: Cannot create directory $INSTALL_DIR. Please check write permissions." >&2
+    exit 1
+}
 
 echo "Installing 'za' CLI from $GITHUB_REPO..."
 
@@ -145,84 +156,143 @@ esac
 # Detect Architecture
 ARCH="$(uname -m)"
 case "$ARCH" in
-    x86_64|amd64) ARCH_NAME="x86_64";;
-    aarch64|arm64) ARCH_NAME="aarch64";;
-    *)            echo "Unsupported architecture: $ARCH" >&2; exit 1;;
+    x86_64|amd64|x86-64|x64) ARCH_NAME="x86_64";;
+    aarch64|arm64|armv8*)    ARCH_NAME="aarch64";;
+    *)                       echo "Unsupported architecture: $ARCH" >&2; exit 1;;
 esac
 
 BINARY_NAME="za-\${OS_NAME}-\${ARCH_NAME}\${EXT}"
 DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/latest/download/$BINARY_NAME"
 TARGET_BIN="$INSTALL_DIR/za\${EXT}"
+TMP_BIN="$INSTALL_DIR/.za.tmp.$$"
 
-mkdir -p "$INSTALL_DIR"
+echo "Downloading $BINARY_NAME to $INSTALL_DIR/za..."
 
-echo "Downloading $BINARY_NAME..."
-if ! curl -fsSL -o "$TARGET_BIN" "$DOWNLOAD_URL"; then
-    echo "Error: Failed to download the binary." >&2
-    echo "Make sure you have published a release with the asset '$BINARY_NAME' to $GITHUB_REPO" >&2
+download_file() {
+    url="$1"
+    dest="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fL --retry 3 --connect-timeout 15 -o "$dest" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q --tries=3 --timeout=15 -O "$dest" "$url"
+    else
+        echo "Error: Neither curl nor wget was found on this system." >&2
+        return 1
+    fi
+}
+
+rm -f "$TMP_BIN"
+if ! download_file "$DOWNLOAD_URL" "$TMP_BIN"; then
+    rm -f "$TMP_BIN"
+    echo "Error: Failed to download the binary from $DOWNLOAD_URL" >&2
+    echo "Make sure release asset '$BINARY_NAME' exists in $GITHUB_REPO" >&2
     exit 1
 fi
 
+if [ ! -s "$TMP_BIN" ]; then
+    rm -f "$TMP_BIN"
+    echo "Error: Downloaded file is empty." >&2
+    exit 1
+fi
+
+chmod +x "$TMP_BIN"
+mv -f "$TMP_BIN" "$TARGET_BIN"
 chmod +x "$TARGET_BIN"
 
-# --- PATH Configuration ---
-add_to_path() {
+if [ ! -f "$TARGET_BIN" ]; then
+    echo "Error: Failed to place binary at $TARGET_BIN" >&2
+    exit 1
+fi
+
+# --- Multi-Shell PATH Configuration (bash, sh, zsh, fish) ---
+already_in_file() {
     file="$1"
-    line_to_add="$2"
-    [ -f "$file" ] || touch "$file"
-    if ! grep -q "$INSTALL_DIR" "$file"; then
-        printf '\\n%s\\n' "$line_to_add" >> "$file"
-        echo "  Added $INSTALL_DIR to PATH in $file"
+    [ -f "$file" ] || return 1
+    grep -E '(\\$HOME|~|/home/[^/]+|/Users/[^/]+)?/\\.local/bin' "$file" >/dev/null 2>&1
+}
+
+add_to_posix_file() {
+    file="$1"
+    [ -n "$file" ] || return 0
+    dir="$(dirname "$file")"
+    [ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null || true
+
+    if already_in_file "$file"; then
+        return 0
+    fi
+
+    if [ -f "$file" ]; then
+        [ -s "$file" ] && [ -n "$(tail -c1 "$file" 2>/dev/null)" ] && printf '\\n' >> "$file"
+        printf '\\n# za CLI PATH\\nexport PATH="$HOME/.local/bin:$PATH"\\n' >> "$file"
+        echo "  Appended PATH to existing $file"
+    else
+        printf '# za CLI PATH\\nexport PATH="$HOME/.local/bin:$PATH"\\n' > "$file"
+        echo "  Created $file with PATH"
+    fi
+}
+
+add_to_fish_file() {
+    fish_file="$HOME/.config/fish/config.fish"
+    dir="$(dirname "$fish_file")"
+    [ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null || true
+
+    if already_in_file "$fish_file"; then
+        return 0
+    fi
+
+    fish_line='fish_add_path "$HOME/.local/bin" 2>/dev/null || set -gx PATH "$HOME/.local/bin" $PATH'
+    if [ -f "$fish_file" ]; then
+        [ -s "$fish_file" ] && [ -n "$(tail -c1 "$fish_file" 2>/dev/null)" ] && printf '\\n' >> "$fish_file"
+        printf '\\n# za CLI PATH\\n%s\\n' "$fish_line" >> "$fish_file"
+        echo "  Appended PATH to existing $fish_file"
+    else
+        printf '# za CLI PATH\\n%s\\n' "$fish_line" > "$fish_file"
+        echo "  Created $fish_file with PATH"
     fi
 }
 
 SHELL_NAME="\${SHELL##*/}"
-DETECTED=0
 
-case "$SHELL_NAME" in
-    zsh)
-        add_to_path "$HOME/.zshrc" 'export PATH="$HOME/.local/bin:$PATH"'
-        DETECTED=1
-        ;;
-    bash)
-        add_to_path "$HOME/.bashrc" 'export PATH="$HOME/.local/bin:$PATH"'
-        case "$(uname -s)" in
-            Darwin*)
-                add_to_path "$HOME/.bash_profile" 'export PATH="$HOME/.local/bin:$PATH"'
-                ;;
-        esac
-        DETECTED=1
-        ;;
-    fish)
-        mkdir -p "$HOME/.config/fish"
-        add_to_path "$HOME/.config/fish/config.fish" 'fish_add_path "$HOME/.local/bin"'
-        DETECTED=1
-        ;;
-    ksh|mksh)
-        add_to_path "$HOME/.kshrc" 'export PATH="$HOME/.local/bin:$PATH"'
-        add_to_path "$HOME/.profile" 'export PATH="$HOME/.local/bin:$PATH"'
-        DETECTED=1
-        ;;
-    csh|tcsh)
-        add_to_path "$HOME/.cshrc" 'setenv PATH "$HOME/.local/bin:$PATH"'
-        DETECTED=1
-        ;;
-    nu|nushell)
-        mkdir -p "$HOME/.config/nushell"
-        add_to_path "$HOME/.config/nushell/env.nu" '\$env.PATH = (\$env.PATH | prepend \\$"(\$env.HOME)/.local/bin")'
-        DETECTED=1
-        ;;
-esac
+# 1. POSIX / sh (universal fallback for /bin/sh and system sessions)
+add_to_posix_file "$HOME/.profile"
 
-if [ -f "$HOME/.profile" ] || [ "$DETECTED" = "0" ]; then
-    add_to_path "$HOME/.profile" 'export PATH="$HOME/.local/bin:$PATH"'
+# 2. Bash
+if [ -f "$HOME/.bashrc" ] || command -v bash >/dev/null 2>&1 || [ "$SHELL_NAME" = "bash" ]; then
+    add_to_posix_file "$HOME/.bashrc"
+fi
+if [ -f "$HOME/.bash_profile" ] || [ "$(uname -s)" = "Darwin" ]; then
+    add_to_posix_file "$HOME/.bash_profile"
+fi
+if [ -f "$HOME/.bash_login" ]; then
+    add_to_posix_file "$HOME/.bash_login"
 fi
 
-if [ "$DETECTED" = "0" ]; then
-    echo ""
-    echo "  Note: Unrecognized shell ($SHELL_NAME)."
-    echo "  We added $INSTALL_DIR to ~/.profile which works for most POSIX login shells."
-    echo "  If your shell doesn't read ~/.profile, please add $INSTALL_DIR to your PATH manually."
+# 3. Zsh
+if [ -f "$HOME/.zshrc" ] || command -v zsh >/dev/null 2>&1 || [ "$SHELL_NAME" = "zsh" ]; then
+    add_to_posix_file "$HOME/.zshrc"
+fi
+if [ -f "$HOME/.zprofile" ]; then
+    add_to_posix_file "$HOME/.zprofile"
+fi
+
+# 4. Fish
+if [ -f "$HOME/.config/fish/config.fish" ] || command -v fish >/dev/null 2>&1 || [ "$SHELL_NAME" = "fish" ]; then
+    add_to_fish_file
+fi
+
+# 5. Other shells if their config files exist
+if [ -f "$HOME/.kshrc" ]; then
+    add_to_posix_file "$HOME/.kshrc"
+fi
+if [ -f "$HOME/.cshrc" ] && ! already_in_file "$HOME/.cshrc"; then
+    [ -s "$HOME/.cshrc" ] && [ -n "$(tail -c1 "$HOME/.cshrc" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.cshrc"
+    printf 'setenv PATH "$HOME/.local/bin:$PATH"\\n' >> "$HOME/.cshrc"
+    echo "  Appended PATH to existing $HOME/.cshrc"
+fi
+if [ -f "$HOME/.config/nushell/env.nu" ] && ! already_in_file "$HOME/.config/nushell/env.nu"; then
+    [ -s "$HOME/.config/nushell/env.nu" ] && [ -n "$(tail -c1 "$HOME/.config/nushell/env.nu" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.config/nushell/env.nu"
+    printf '$env.PATH = ($env.PATH | prepend $"($env.HOME)/.local/bin")\\n' >> "$HOME/.config/nushell/env.nu"
+    echo "  Appended PATH to existing $HOME/.config/nushell/env.nu"
 fi
 
 export PATH="$INSTALL_DIR:$PATH"
@@ -230,7 +300,7 @@ export PATH="$INSTALL_DIR:$PATH"
 # Remove legacy user identity file if present for privacy
 rm -f "$HOME/.config/za/user" 2>/dev/null || true
 
-# Determine source command for detected shell (NEVER use . notation)
+# Determine source command for detected shell
 case "$SHELL_NAME" in
     zsh)
         RELOAD_CMD="source ~/.zshrc"
@@ -240,6 +310,9 @@ case "$SHELL_NAME" in
         ;;
     fish)
         RELOAD_CMD="source ~/.config/fish/config.fish"
+        ;;
+    sh)
+        RELOAD_CMD=". ~/.profile"
         ;;
     ksh|mksh)
         RELOAD_CMD="source ~/.kshrc"
@@ -251,7 +324,13 @@ case "$SHELL_NAME" in
         RELOAD_CMD="source ~/.config/nushell/env.nu"
         ;;
     *)
-        RELOAD_CMD="source ~/.profile"
+        if [ -f "$HOME/.bashrc" ]; then
+            RELOAD_CMD="source ~/.bashrc"
+        elif [ -f "$HOME/.zshrc" ]; then
+            RELOAD_CMD="source ~/.zshrc"
+        else
+            RELOAD_CMD=". ~/.profile"
+        fi
         ;;
 esac
 
@@ -265,13 +344,13 @@ echo "----------------------------------------"
 echo ""
 echo "Quick Start:"
 echo "  za login                Log in to your account"
-echo "  za \"your question\"      Ask anything / generate code"
+echo "  za \\"your question\\"      Ask anything / generate code"
 echo "  za -o file.c prompt     Save clean code to file (No null errors!)"
-echo "  za -t \"hard problem\"    Prioritize reasoning model"
+echo "  za -t \\"hard problem\\"    Prioritize reasoning model"
 echo "  za help                 Show all commands"
 echo ""
 echo "Run this now to enable 'za' in this terminal:"
-printf "  %b%s%b\\n" "\$BLUE" "\$RELOAD_CMD" "\$RESET"
+printf "  %b%s%b  (or open a new terminal)\\n" "$BLUE" "$RELOAD_CMD" "$RESET"
 echo ""
 `;
 
