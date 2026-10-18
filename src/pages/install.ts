@@ -312,10 +312,8 @@ else
             fi
             ;;
         zsh)
+            add_to_posix_file "$HOME/.zprofile"
             add_to_posix_file "$HOME/.zshrc"
-            if [ -f "$HOME/.zprofile" ]; then
-                add_to_posix_file "$HOME/.zprofile"
-            fi
             ;;
         fish)
             add_to_fish_file
