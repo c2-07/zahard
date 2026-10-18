@@ -205,6 +205,24 @@ if [ ! -f "$TARGET_BIN" ]; then
 fi
 
 # --- Multi-Shell PATH Configuration (bash, sh, zsh, fish) ---
+dir_in_path() {
+    target="$1"
+    path_val="$2"
+    [ -n "$path_val" ] || return 1
+
+    case ":\${path_val}:" in
+        *":\${target}:"*|*":\${target}/:"*|*":\${HOME}/.local/bin:"*|*":\${HOME}/.local/bin/:"*|*":~/.local/bin:"*|*":~/.local/bin/:"*)
+            return 0
+            ;;
+    esac
+    case " \${path_val} " in
+        *" \${target} "*|*" \${target}/ "*|*" \${HOME}/.local/bin "*|*" \${HOME}/.local/bin/ "*|*" ~/.local/bin "*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 already_in_file() {
     file="$1"
     [ -f "$file" ] || return 1
@@ -251,48 +269,95 @@ add_to_fish_file() {
     fi
 }
 
-SHELL_NAME="\${SHELL##*/}"
-
-# 1. POSIX / sh (universal fallback for /bin/sh and system sessions)
-add_to_posix_file "$HOME/.profile"
-
-# 2. Bash
-if [ -f "$HOME/.bashrc" ] || command -v bash >/dev/null 2>&1 || [ "$SHELL_NAME" = "bash" ]; then
-    add_to_posix_file "$HOME/.bashrc"
+DEF_SHELL="\${SHELL:-}"
+if [ -z "$DEF_SHELL" ]; then
+    DEF_SHELL="$(getent passwd "$(id -un 2>/dev/null || whoami)" 2>/dev/null | cut -d: -f7)"
 fi
-if [ -f "$HOME/.bash_profile" ] || [ "$(uname -s)" = "Darwin" ]; then
-    add_to_posix_file "$HOME/.bash_profile"
-fi
-if [ -f "$HOME/.bash_login" ]; then
-    add_to_posix_file "$HOME/.bash_login"
+[ -z "$DEF_SHELL" ] && DEF_SHELL="/bin/sh"
+[ -z "$SHELL_NAME" ] && SHELL_NAME="\${DEF_SHELL##*/}"
+
+# Check if ~/.local/bin is ALREADY in PATH for default shell or active environment
+ALREADY_IN_SHELL_PATH=0
+
+if dir_in_path "$INSTALL_DIR" "$PATH"; then
+    ALREADY_IN_SHELL_PATH=1
 fi
 
-# 3. Zsh
-if [ -f "$HOME/.zshrc" ] || command -v zsh >/dev/null 2>&1 || [ "$SHELL_NAME" = "zsh" ]; then
-    add_to_posix_file "$HOME/.zshrc"
-fi
-if [ -f "$HOME/.zprofile" ]; then
-    add_to_posix_file "$HOME/.zprofile"
-fi
-
-# 4. Fish
-if [ -f "$HOME/.config/fish/config.fish" ] || command -v fish >/dev/null 2>&1 || [ "$SHELL_NAME" = "fish" ]; then
-    add_to_fish_file
+if [ "$ALREADY_IN_SHELL_PATH" -eq 0 ] && ([ -x "$DEF_SHELL" ] || command -v "$DEF_SHELL" >/dev/null 2>&1); then
+    DEF_LOGIN_PATH="$("$DEF_SHELL" -l -c 'printf %s "$PATH"' 2>/dev/null || "$DEF_SHELL" -l -c 'echo "$PATH"' 2>/dev/null || true)"
+    if dir_in_path "$INSTALL_DIR" "$DEF_LOGIN_PATH"; then
+        ALREADY_IN_SHELL_PATH=1
+    fi
 fi
 
-# 5. Other shells if their config files exist
-if [ -f "$HOME/.kshrc" ]; then
-    add_to_posix_file "$HOME/.kshrc"
+if [ "$ALREADY_IN_SHELL_PATH" -eq 0 ] && ([ -x "$DEF_SHELL" ] || command -v "$DEF_SHELL" >/dev/null 2>&1); then
+    DEF_CMD_PATH="$("$DEF_SHELL" -c 'printf %s "$PATH"' 2>/dev/null || "$DEF_SHELL" -c 'echo "$PATH"' 2>/dev/null || true)"
+    if dir_in_path "$INSTALL_DIR" "$DEF_CMD_PATH"; then
+        ALREADY_IN_SHELL_PATH=1
+    fi
 fi
-if [ -f "$HOME/.cshrc" ] && ! already_in_file "$HOME/.cshrc"; then
-    [ -s "$HOME/.cshrc" ] && [ -n "$(tail -c1 "$HOME/.cshrc" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.cshrc"
-    printf 'setenv PATH "$HOME/.local/bin:$PATH"\\n' >> "$HOME/.cshrc"
-    echo "  Appended PATH to existing $HOME/.cshrc"
-fi
-if [ -f "$HOME/.config/nushell/env.nu" ] && ! already_in_file "$HOME/.config/nushell/env.nu"; then
-    [ -s "$HOME/.config/nushell/env.nu" ] && [ -n "$(tail -c1 "$HOME/.config/nushell/env.nu" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.config/nushell/env.nu"
-    printf '$env.PATH = ($env.PATH | prepend $"($env.HOME)/.local/bin")\\n' >> "$HOME/.config/nushell/env.nu"
-    echo "  Appended PATH to existing $HOME/.config/nushell/env.nu"
+
+if [ "$ALREADY_IN_SHELL_PATH" -eq 1 ]; then
+    echo "  $INSTALL_DIR is already in your PATH ($DEF_SHELL)."
+else
+    # 1. POSIX baseline (for /bin/sh and Linux login/desktop sessions)
+    add_to_posix_file "$HOME/.profile"
+
+    # 2. Update default shell configuration
+    case "$SHELL_NAME" in
+        bash)
+            add_to_posix_file "$HOME/.bashrc"
+            if [ -f "$HOME/.bash_profile" ] || [ "$(uname -s)" = "Darwin" ]; then
+                add_to_posix_file "$HOME/.bash_profile"
+            fi
+            ;;
+        zsh)
+            add_to_posix_file "$HOME/.zshrc"
+            if [ -f "$HOME/.zprofile" ]; then
+                add_to_posix_file "$HOME/.zprofile"
+            fi
+            ;;
+        fish)
+            add_to_fish_file
+            ;;
+        sh)
+            # Handled by ~/.profile above
+            ;;
+        *)
+            if [ -f "$HOME/.bashrc" ]; then
+                add_to_posix_file "$HOME/.bashrc"
+            elif [ -f "$HOME/.zshrc" ]; then
+                add_to_posix_file "$HOME/.zshrc"
+            fi
+            ;;
+    esac
+
+    # 3. Also append to other shells ONLY IF their configuration files already exist
+    if [ -f "$HOME/.bashrc" ] && [ "$SHELL_NAME" != "bash" ]; then
+        add_to_posix_file "$HOME/.bashrc"
+    fi
+    if [ -f "$HOME/.bash_profile" ] && [ "$SHELL_NAME" != "bash" ]; then
+        add_to_posix_file "$HOME/.bash_profile"
+    fi
+    if [ -f "$HOME/.zshrc" ] && [ "$SHELL_NAME" != "zsh" ]; then
+        add_to_posix_file "$HOME/.zshrc"
+    fi
+    if [ -f "$HOME/.config/fish/config.fish" ] && [ "$SHELL_NAME" != "fish" ]; then
+        add_to_fish_file
+    fi
+    if [ -f "$HOME/.kshrc" ]; then
+        add_to_posix_file "$HOME/.kshrc"
+    fi
+    if [ -f "$HOME/.cshrc" ] && ! already_in_file "$HOME/.cshrc"; then
+        [ -s "$HOME/.cshrc" ] && [ -n "$(tail -c1 "$HOME/.cshrc" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.cshrc"
+        printf 'setenv PATH "$HOME/.local/bin:$PATH"\\n' >> "$HOME/.cshrc"
+        echo "  Appended PATH to existing $HOME/.cshrc"
+    fi
+    if [ -f "$HOME/.config/nushell/env.nu" ] && ! already_in_file "$HOME/.config/nushell/env.nu"; then
+        [ -s "$HOME/.config/nushell/env.nu" ] && [ -n "$(tail -c1 "$HOME/.config/nushell/env.nu" 2>/dev/null)" ] && printf '\\n' >> "$HOME/.config/nushell/env.nu"
+        printf '$env.PATH = ($env.PATH | prepend $"($env.HOME)/.local/bin")\\n' >> "$HOME/.config/nushell/env.nu"
+        echo "  Appended PATH to existing $HOME/.config/nushell/env.nu"
+    fi
 fi
 
 export PATH="$INSTALL_DIR:$PATH"
@@ -349,8 +414,13 @@ echo "  za -o file.c prompt     Save clean code to file (No null errors!)"
 echo "  za -t \\"hard problem\\"    Prioritize reasoning model"
 echo "  za help                 Show all commands"
 echo ""
-echo "Run this now to enable 'za' in this terminal:"
-printf "  %b%s%b  (or open a new terminal)\\n" "$BLUE" "$RELOAD_CMD" "$RESET"
+if [ "$ALREADY_IN_SHELL_PATH" -eq 1 ]; then
+    echo "You can run 'za' immediately in this terminal:"
+    printf "  %bza help%b\\n" "$BLUE" "$RESET"
+else
+    echo "Run this now to enable 'za' in this terminal:"
+    printf "  %b%s%b  (or open a new terminal)\\n" "$BLUE" "$RELOAD_CMD" "$RESET"
+fi
 echo ""
 `;
 

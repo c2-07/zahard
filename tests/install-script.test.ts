@@ -165,6 +165,53 @@ describe('Install Scripts', () => {
     }
   });
 
+  it('skips modifying shell config files when ~/.local/bin is already present in PATH or default shell', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const { execSync } = await import('node:child_process');
+
+    const mockContext = {
+      request: new Request('http://localhost:4321/install', {
+        headers: new Headers({ 'User-Agent': 'curl/7.81.0' })
+      }),
+    } as any;
+    
+    const response = await getInstall(mockContext);
+    const fullScript = await response.text();
+
+    const pathSetupStartIndex = fullScript.indexOf('# --- Multi-Shell PATH Configuration');
+    const pathSetupEndIndex = fullScript.indexOf('export PATH="$INSTALL_DIR:$PATH"');
+    const pathScript = fullScript.slice(pathSetupStartIndex, pathSetupEndIndex);
+
+    const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'za-install-already-in-path-'));
+
+    try {
+      const bashrc = path.join(testHome, '.bashrc');
+      const zshrc = path.join(testHome, '.zshrc');
+      fs.writeFileSync(bashrc, '# pristine bashrc\n', 'utf8');
+      fs.writeFileSync(zshrc, '# pristine zshrc\n', 'utf8');
+
+      const testRunnerScript = `
+        HOME="${testHome}"
+        INSTALL_DIR="$HOME/.local/bin"
+        PATH="$INSTALL_DIR:/usr/bin:/bin"
+        SHELL_NAME="bash"
+        ${pathScript}
+      `;
+
+      const output = execSync(testRunnerScript, { shell: '/bin/sh' }).toString();
+      expect(output).toContain('is already in your PATH');
+
+      // Verify files were NOT modified
+      expect(fs.readFileSync(bashrc, 'utf8')).toBe('# pristine bashrc\n');
+      expect(fs.readFileSync(zshrc, 'utf8')).toBe('# pristine zshrc\n');
+      expect(fs.existsSync(path.join(testHome, '.profile'))).toBe(false);
+    } finally {
+      fs.rmSync(testHome, { recursive: true, force: true });
+    }
+  });
+
   it('full Unix installer script creates .local/bin/za with executable permissions and configures all shells', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
