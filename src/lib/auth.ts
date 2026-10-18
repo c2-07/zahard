@@ -16,8 +16,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(userId: string, role: string, tokenVersion: number, sessionId: string): Promise<string> {
-  return new SignJWT({ userId, role, tv: tokenVersion, sid: sessionId })
+export async function createSession(userId: string, role: string, tokenVersion?: number, sessionId?: string): Promise<string> {
+  const payload: Record<string, any> = { userId, role };
+  if (tokenVersion !== undefined) payload.tv = tokenVersion;
+  if (sessionId !== undefined) payload.sid = sessionId;
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h') // 1 day session

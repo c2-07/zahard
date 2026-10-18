@@ -31,3 +31,5 @@ skills-lock.json
 data.db
 
 .vercel
+target/
+cli/target/

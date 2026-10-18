@@ -47,8 +47,8 @@ const { title } = Astro.props;
     import { animate } from 'motion';
 
     // Global Entrance Animations
-    animate('header', { y: [-20, 0], opacity: [0, 1] }, { duration: 0.5, easing: 'ease-out' });
-    animate('main', { y: [20, 0], opacity: [0, 1] }, { duration: 0.5, delay: 0.1, easing: 'ease-out' });
+    animate('header', { y: [-20, 0], opacity: [0, 1] }, { duration: 0.5, ease: 'easeOut' });
+    animate('main', { y: [20, 0], opacity: [0, 1] }, { duration: 0.5, delay: 0.1, ease: 'easeOut' });
 
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });

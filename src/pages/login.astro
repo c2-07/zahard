@@ -49,7 +49,7 @@ if (cookie) {
   <script>
     import { animate } from 'motion';
 
-    animate('.card', { scale: [0.95, 1], opacity: [0, 1] }, { duration: 0.4, easing: 'ease-out' });
+    animate('.card', { scale: [0.95, 1], opacity: [0, 1] }, { duration: 0.4, ease: 'easeOut' });
 
     document.getElementById('guest-login-btn')?.addEventListener('click', () => {
       document.cookie = "session=guest_admin; path=/";
